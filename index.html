@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Publik — Work</title>
+<style>
+  :root{
+    --bg:#06060B;
+    --bg-alt:#0B0B14;
+    --ink:#F5F5F2;
+    --ink-soft:#9C9AA8;
+    --lime:#D6FF3F;
+    --border:rgba(255,255,255,.12);
+    --video-bg:#111116;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    background:var(--bg);
+    color:var(--ink);
+    line-height:1.5;
+    overflow-x:hidden;
+    position:relative;
+  }
+
+  .stars{
+    position:fixed;
+    inset:0;
+    z-index:0;
+    pointer-events:none;
+    overflow:hidden;
+  }
+  .star{
+    position:absolute;
+    background:#FFFFFF;
+    border-radius:50%;
+    animation:twinkle ease-in-out infinite;
+  }
+  @keyframes twinkle{
+    0%,100%{ opacity:.15; }
+    50%{ opacity:1; }
+  }
+
+  header, .intro, .portfolio, .bottom{
+    position:relative;
+    z-index:1;
+  }
+
+  header{
+    position:sticky;
+    top:0;
+    z-index:50;
+    background:rgba(6,6,11,.75);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+    padding:1.1rem 6vw;
+    font-weight:800;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+    font-size:.95rem;
+  }
+
+  .intro{
+    padding:8vh 6vw 5vh;
+  }
+  .intro .eyebrow{
+    color:var(--bg);
+    font-weight:700;
+    letter-spacing:.16em;
+    text-transform:uppercase;
+    font-size:.78rem;
+    background:var(--lime);
+    display:inline-block;
+    padding:.3rem .7rem;
+    margin-bottom:1rem;
+  }
+  .intro h1{
+    font-size:clamp(1.8rem,4.5vw,3rem);
+    font-weight:800;
+    max-width:800px;
+    line-height:1.15;
+    color:var(--ink);
+  }
+
+  .portfolio{
+    padding:2vh 6vw 10vh;
+    display:flex;
+    flex-direction:column;
+    gap:9vh;
+  }
+
+  .pair{
+    opacity:0;
+    transform:scale(.96);
+    transition:opacity 2.4s ease, transform 2.4s ease;
+  }
+  .pair.is-visible{
+    opacity:1;
+    transform:scale(1);
+  }
+
+  .row{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:2.5rem;
+    flex-wrap:wrap;
+  }
+  .row.align-right{ justify-content:flex-end; }
+  .row.reverse{ flex-direction:row-reverse; }
+  .row.stack{ flex-direction:column; align-items:flex-start; gap:1.2rem; }
+
+  .video-frame{
+    position:relative;
+    background:var(--video-bg);
+    border:1px solid var(--border);
+    overflow:hidden;
+    flex-shrink:0;
+  }
+  .video-frame video{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    display:block;
+  }
+  .video-frame .ph-label{
+    position:absolute;
+    inset:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:.8rem;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    pointer-events:none;
+  }
+
+  .size-big{ width:min(760px,92vw); aspect-ratio:16/9; }
+  .size-small{ width:min(380px,82vw); aspect-ratio:16/9; }
+  .size-vertical{ width:min(240px,68vw); aspect-ratio:9/16; }
+
+  .desc{
+    max-width:340px;
+    font-size:1rem;
+    color:var(--ink-soft);
+    line-height:1.6;
+  }
+  .desc .num{
+    display:block;
+    font-weight:800;
+    color:var(--lime);
+    font-size:.85rem;
+    letter-spacing:.06em;
+    margin-bottom:.5rem;
+  }
+  .row.stack .desc{ max-width:min(300px,80vw); }
+
+  .transition{
+    text-align:center;
+    padding:6vh 6vw 8vh;
+  }
+  .transition p{
+    font-size:clamp(1.4rem,3.2vw,2.1rem);
+    font-weight:800;
+    color:var(--lime);
+    letter-spacing:.02em;
+  }
+
+  .bottom{
+    background:var(--bg-alt);
+    color:var(--ink);
+    padding:9vh 6vw 6vh;
+    border-top:1px solid var(--border);
+  }
+  .bottom .eyebrow{
+    color:var(--lime);
+    font-weight:700;
+    letter-spacing:.16em;
+    text-transform:uppercase;
+    font-size:.78rem;
+    margin-bottom:1rem;
+  }
+  .bottom h2{
+    font-size:clamp(1.6rem,3.5vw,2.4rem);
+    font-weight:800;
+    max-width:700px;
+    margin-bottom:1.2rem;
+  }
+  .bottom p.about{
+    color:#B9B7C2;
+    max-width:620px;
+    font-size:.98rem;
+    margin-bottom:3rem;
+  }
+
+  .contacts{
+    display:flex;
+    gap:4rem;
+    flex-wrap:wrap;
+    margin-bottom:3rem;
+  }
+  .contact-card .name{
+    font-weight:800;
+    font-size:1.05rem;
+    margin-bottom:.15rem;
+  }
+  .contact-card .role{
+    color:var(--lime);
+    font-size:.8rem;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:.05em;
+    margin-bottom:.8rem;
+  }
+  .contact-card a{
+    display:block;
+    color:#DAD8E0;
+    text-decoration:none;
+    font-size:.92rem;
+    margin-bottom:.35rem;
+    border-bottom:1px solid transparent;
+  }
+  .contact-card a:hover{
+    color:var(--lime);
+  }
+
+  .bottom .footline{
+    border-top:1px solid var(--border);
+    padding-top:1.5rem;
+    font-size:.8rem;
+    color:#7A7885;
+  }
+
+  @media (max-width:720px){
+    .row, .row.reverse, .row.align-right{
+      flex-direction:column;
+      align-items:flex-start;
+      justify-content:flex-start;
+    }
+    .size-big, .size-small{ width:100%; }
+    .size-vertical{ width:min(240px,60vw); }
+    .desc{ max-width:100%; }
+  }
+</style>
+</head>
+<body>
+
+<div class="stars" id="stars"></div>
+
+<header>Publik</header>
+
+<section class="intro">
+  <p class="eyebrow">Selected work</p>
+  <h1>A look at the kind of short-form video we produce.</h1>
+</section>
+
+<section class="portfolio">
+
+  <!-- 1: lamp, big, description right -->
+  <div class="pair">
+    <div class="row">
+      <div class="video-frame size-big" data-video="1">
+        <video muted loop playsinline src="video-1-lamp-web.mp4"></video>
+      </div>
+      <div class="desc">
+        <span class="num">1</span>
+        A close-up product shot of a warm, glowing table lamp, built to put the lighting design front and center.
+      </div>
+    </div>
+  </div>
+
+  <!-- 2: bed frame, small, description left, shifted right -->
+  <div class="pair">
+    <div class="row align-right reverse">
+      <div class="video-frame size-small" data-video="2">
+        <video muted loop playsinline src="video-2-bedframe-web.mp4"></video>
+      </div>
+      <div class="desc">
+        <span class="num">2</span>
+        An architectural close-up of a bed frame's underside, showing off the joinery and craftsmanship of the piece.
+      </div>
+    </div>
+  </div>
+
+  <!-- 3: desert van, big, description right, shifted further right -->
+  <div class="pair">
+    <div class="row align-right">
+      <div class="video-frame size-big" data-video="3">
+        <video muted loop playsinline src="video-3-desertvan-web.mp4"></video>
+      </div>
+      <div class="desc">
+        <span class="num">3</span>
+        A branded van moving along a wide desert highway, taking the promotion straight to the road.
+      </div>
+    </div>
+  </div>
+
+  <!-- 4: cafe, big, description right -->
+  <div class="pair">
+    <div class="row">
+      <div class="video-frame size-big" data-video="4">
+        <video muted loop playsinline src="video-4-cafe-web.mp4"></video>
+      </div>
+      <div class="desc">
+        <span class="num">4</span>
+        A smooth, continuous walkthrough of a modern coffee shop interior, shot like a cinematic ad.
+      </div>
+    </div>
+  </div>
+
+  <!-- 5: night venue, vertical, description below; 6: superhero, small, description below -->
+  <div class="pair">
+    <div class="row" style="justify-content:center; gap:4rem;">
+      <div class="row stack">
+        <div class="video-frame size-vertical" data-video="5">
+            <video muted loop playsinline src="video-5-nightvenue-web.mp4"></video>
+        </div>
+        <div class="desc">
+          <span class="num">5</span>
+          A moody, vertical night shot of a venue's entrance, framed for Stories and Reels.
+        </div>
+      </div>
+      <div class="row stack">
+        <div class="video-frame size-small" data-video="6">
+            <video muted loop playsinline src="video-6-superhero-web.mp4"></video>
+        </div>
+        <div class="desc">
+          <span class="num">6</span>
+          A stylized concept spot bringing a superhero character to a cozy café counter, for a bolder promo.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7: bedroom, big, description right -->
+  <div class="pair">
+    <div class="row">
+      <div class="video-frame size-big" data-video="7">
+        <video muted loop playsinline src="video-7-bedroom-web.mp4"></video>
+      </div>
+      <div class="desc">
+        <span class="num">7</span>
+        A calm, continuous interior shot of a bedroom, designed to show off the space and its finish.
+      </div>
+    </div>
+  </div>
+
+</section>
+
+<section class="transition">
+  <p>Not all this is&hellip;</p>
+</section>
+
+<section class="bottom">
+  <p class="eyebrow">About Publik</p>
+  <h2>A marketing agency producing short-form video and smart NFC engagement tools, built to order.</h2>
+  <p class="about">
+    We produce short promotional videos for clients by combining our own filming with AI video tools, and
+    design custom NFC cards that let customers tap to leave a review, follow a business's social media,
+    or reach its website. Every project is scoped and delivered per order.
+  </p>
+
+  <div class="contacts">
+    <div class="contact-card">
+      <div class="name">Artemii Graf</div>
+      <div class="role">Co-Founder &amp; CEO</div>
+      <a href="mailto:artemiygraf@gmail.com">artemiygraf@gmail.com</a>
+      <a href="https://wa.me/971564965295">+971 56 496 5295 (WhatsApp)</a>
+    </div>
+    <div class="contact-card">
+      <div class="name">Oleg Smorodinskii</div>
+      <div class="role">Co-Founder &amp; CEO</div>
+      <a href="mailto:oleg.smorodinskii@gmail.com">oleg.smorodinskii@gmail.com</a>
+      <a href="https://wa.me/971502256415">+971 50 225 6415 (WhatsApp)</a>
+    </div>
+  </div>
+
+  <p class="footline">Publik &middot; Dubai, UAE</p>
+</section>
+
+<script>
+  // Star field
+  const starsContainer = document.getElementById('stars');
+  const starCount = 160;
+  for (let i = 0; i < starCount; i++) {
+    const s = document.createElement('div');
+    s.className = 'star';
+    const size = (Math.random() * 2 + 0.6).toFixed(1);
+    s.style.width = size + 'px';
+    s.style.height = size + 'px';
+    s.style.top = (Math.random() * 100) + 'vh';
+    s.style.left = (Math.random() * 100) + 'vw';
+    s.style.animationDuration = (2 + Math.random() * 4).toFixed(1) + 's';
+    s.style.animationDelay = (Math.random() * 4).toFixed(1) + 's';
+    starsContainer.appendChild(s);
+  }
+
+  // Reveal + autoplay on scroll
+  const pairs = document.querySelectorAll('.pair');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('is-visible');
+        entry.target.querySelectorAll('video').forEach(v => {
+          v.play().catch(()=>{});
+        });
+      } else {
+        entry.target.classList.remove('is-visible');
+        entry.target.querySelectorAll('video').forEach(v => {
+          v.pause();
+        });
+      }
+    });
+  }, { threshold: 0.2 });
+  pairs.forEach(p => observer.observe(p));
+</script>
+
+</body>
+</html>
