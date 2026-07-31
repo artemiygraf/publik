@@ -29,12 +29,14 @@
   h1{ font-size:1.3rem; font-weight:800; margin-bottom:4px; }
   .hint{ color:var(--ink-soft); font-size:.85rem; margin-bottom:28px; }
 
+  .summary-row{ display:flex; gap:.9rem; margin-bottom:1.8rem; }
   .summary{
+    flex:1;
     background:var(--card-bg); border:1px solid var(--border); border-radius:14px;
-    padding:1.4rem 1.6rem; margin-bottom:1.6rem;
+    padding:1.2rem 1.3rem;
   }
-  .summary .big{ font-size:2.2rem; font-weight:800; color:var(--lime); }
-  .summary .label{ color:var(--ink-soft); font-size:.85rem; margin-top:.2rem; }
+  .summary .big{ font-size:1.9rem; font-weight:800; color:var(--lime); }
+  .summary .label{ color:var(--ink-soft); font-size:.78rem; margin-top:.2rem; }
 
   table{ width:100%; border-collapse:collapse; }
   th{
@@ -52,6 +54,27 @@
     border-radius:12px; padding:1.4rem 1.6rem;
   }
   .center-msg{ text-align:center; padding-top:12vh; color:var(--ink-soft); }
+
+  .section{ margin-top:2.2rem; }
+  .section-title{
+    font-size:.78rem; text-transform:uppercase; letter-spacing:.05em;
+    color:var(--ink-soft); font-weight:700; margin-bottom:1rem;
+  }
+  .chart{
+    display:flex; align-items:flex-end; gap:5px; height:110px;
+    border-bottom:1px solid var(--border); padding-bottom:2px;
+  }
+  .chart-col{
+    flex:1; display:flex; flex-direction:column; align-items:center;
+    justify-content:flex-end; height:100%; min-width:0;
+  }
+  .chart-bar{
+    width:100%; max-width:26px; background:var(--lime); border-radius:3px 3px 0 0; min-height:2px;
+  }
+  .chart-labels{ display:flex; gap:5px; margin-top:6px; }
+  .chart-labels span{
+    flex:1; text-align:center; font-size:.62rem; color:var(--ink-soft); min-width:0;
+  }
 </style>
 </head>
 <body>
@@ -102,10 +125,57 @@
     return days + 'd ago';
   }
 
-  function renderStats(rows) {
-    const pageView = rows.find(r => r.link_label === '__page_view__');
-    const linkRows = rows.filter(r => r.link_label !== '__page_view__');
+  function barChartHtml(items) {
+    const max = Math.max(1, ...items.map(i => i.value));
+    const bars = items.map(i => `
+      <div class="chart-col">
+        <div class="chart-bar" style="height:${Math.round((i.value / max) * 100)}%;" title="${i.value}"></div>
+      </div>
+    `).join('');
+    const labels = items.map(i => `<span>${i.label}</span>`).join('');
+    return `<div class="chart">${bars}</div><div class="chart-labels">${labels}</div>`;
+  }
+
+  function buildTrend(events) {
+    // Last 14 calendar days of taps (page views), including days with zero.
+    const dayCounts = {};
+    events.forEach(function (e) {
+      if (e.link_label !== '__page_view__') return;
+      const d = new Date(e.clicked_at);
+      const key = d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
+      dayCounts[key] = (dayCounts[key] || 0) + 1;
+    });
+
+    const items = [];
+    const today = new Date();
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const key = d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
+      items.push({
+        label: (d.getMonth() + 1) + '/' + d.getDate(),
+        value: dayCounts[key] || 0
+      });
+    }
+    return items;
+  }
+
+  function buildWeekdayPattern(events) {
+    const names = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const counts = [0, 0, 0, 0, 0, 0, 0];
+    events.forEach(function (e) {
+      if (e.link_label !== '__page_view__') return;
+      counts[new Date(e.clicked_at).getDay()]++;
+    });
+    return names.map((n, i) => ({ label: n, value: counts[i] }));
+  }
+
+  function renderStats(statRows, events) {
+    const pageView = statRows.find(r => r.link_label === '__page_view__');
+    const linkRows = statRows.filter(r => r.link_label !== '__page_view__');
     const totalTaps = pageView ? pageView.click_count : 0;
+    const totalLinkClicks = linkRows.reduce((sum, r) => sum + Number(r.click_count), 0);
+    const engagement = totalTaps > 0 ? Math.round((totalLinkClicks / totalTaps) * 100) : null;
 
     const rowsHtml = linkRows.length
       ? linkRows.map(r => `
@@ -117,14 +187,22 @@
         `).join('')
       : '';
 
+    const hasEnoughForCharts = events.length > 0;
+
     wrap.innerHTML = `
       <div class="badge">P</div>
       <h1>Card stats</h1>
       <div class="hint">Only visible to you, via your own edit link.</div>
 
-      <div class="summary">
-        <div class="big">${totalTaps}</div>
-        <div class="label">Total taps of your card</div>
+      <div class="summary-row">
+        <div class="summary">
+          <div class="big">${totalTaps}</div>
+          <div class="label">Total taps</div>
+        </div>
+        <div class="summary">
+          <div class="big">${engagement === null ? '—' : engagement + '%'}</div>
+          <div class="label">Link clicks per tap</div>
+        </div>
       </div>
 
       ${linkRows.length ? `
@@ -135,6 +213,18 @@
           <tbody>${rowsHtml}</tbody>
         </table>
       ` : `<div class="empty">No link clicks yet — once visitors start tapping the buttons on your page, they'll show up here.</div>`}
+
+      ${hasEnoughForCharts ? `
+        <div class="section">
+          <div class="section-title">Taps, last 14 days</div>
+          ${barChartHtml(buildTrend(events))}
+        </div>
+
+        <div class="section">
+          <div class="section-title">Taps by day of week</div>
+          ${barChartHtml(buildWeekdayPattern(events))}
+        </div>
+      ` : ''}
     `;
   }
 
@@ -154,12 +244,17 @@
         return;
       }
 
-      client.rpc('get_click_stats', { p_id: id, p_key: key }).then(function (statsRes) {
-        if (statsRes.error) {
+      Promise.all([
+        client.rpc('get_click_stats', { p_id: id, p_key: key }),
+        client.rpc('get_click_events', { p_id: id, p_key: key })
+      ]).then(function (results) {
+        const statsRes = results[0];
+        const eventsRes = results[1];
+        if (statsRes.error || eventsRes.error) {
           showMessage("Couldn't load stats. Try again.");
           return;
         }
-        renderStats(statsRes.data || []);
+        renderStats(statsRes.data || [], eventsRes.data || []);
       }).catch(function () {
         showMessage("Couldn't load stats. Try again.");
       });
