@@ -6,8 +6,8 @@
 <title>Publik — Work</title>
 <style>
   :root{
-    --bg:#06060B;
-    --bg-alt:#0B0B14;
+    --bg:#1B1B26;
+    --bg-alt:#242430;
     --ink:#F5F5F2;
     --ink-soft:#9C9AA8;
     --lime:#D6FF3F;
@@ -52,7 +52,7 @@
     position:sticky;
     top:0;
     z-index:50;
-    background:rgba(6,6,11,.75);
+    background:rgba(27,27,38,.75);
     backdrop-filter:blur(8px);
     border-bottom:1px solid var(--border);
     padding:1.1rem 6vw;
@@ -169,8 +169,78 @@
     letter-spacing:.02em;
   }
 
+  .nfc-showcase{
+    text-align:center;
+    padding:2vh 6vw 12vh;
+  }
+  .card-stage{
+    perspective:1400px;
+    display:flex;
+    justify-content:center;
+    padding:2vh 0 6vh;
+  }
+  .card-tilt{
+    transform:rotateX(12deg) rotateZ(-9deg);
+    transform-style:preserve-3d;
+  }
+  .card-spin{
+    width:min(230px,58vw);
+    aspect-ratio:639/1011;
+    border-radius:4.5%;
+    overflow:hidden;
+    transform-style:preserve-3d;
+    box-shadow:0 30px 60px rgba(0,0,0,.5);
+    animation:cardspin 9s linear infinite;
+  }
+  .card-spin img{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    display:block;
+    backface-visibility:hidden;
+  }
+  @keyframes cardspin{
+    from{ transform:rotateY(0deg); }
+    to{ transform:rotateY(360deg); }
+  }
+  .nfc-showcase .eyebrow{
+    color:var(--lime);
+    font-weight:700;
+    letter-spacing:.16em;
+    text-transform:uppercase;
+    font-size:.78rem;
+    margin-bottom:1rem;
+  }
+  .nfc-showcase h2{
+    font-size:clamp(1.6rem,3.5vw,2.4rem);
+    font-weight:800;
+    max-width:640px;
+    margin:0 auto 1.1rem;
+  }
+  .nfc-showcase p.desc-text{
+    color:var(--ink-soft);
+    max-width:520px;
+    margin:0 auto 2.2rem;
+    font-size:.98rem;
+    line-height:1.6;
+  }
+  .cta-btn{
+    display:inline-block;
+    background:var(--lime);
+    color:#111;
+    text-decoration:none;
+    font-weight:800;
+    font-size:.95rem;
+    padding:.95rem 2.2rem;
+    border-radius:999px;
+    transition:transform .15s ease;
+  }
+  .cta-btn:hover{
+    transform:scale(1.04);
+  }
+
   .bottom{
-    background:var(--bg-alt);
+    background:var(--bg);
     color:var(--ink);
     padding:9vh 6vw 6vh;
     border-top:1px solid var(--border);
@@ -368,6 +438,7 @@
 
 <nav class="menu-overlay" id="menuOverlay">
   <a href="#portfolio" class="menu-link">Portfolio</a>
+  <a href="#nfc-card" class="menu-link">NFC Cards</a>
   <a href="#about" class="menu-link">About Us</a>
   <a href="#reviews" class="menu-link">Client Reviews</a>
 </nav>
@@ -481,6 +552,24 @@
   <p>Not all this is&hellip;</p>
 </section>
 
+<section class="nfc-showcase" id="nfc-card">
+  <div class="card-stage">
+    <div class="card-tilt">
+      <div class="card-spin">
+        <img src="nfc-card.png" alt="Publik NFC tap card">
+      </div>
+    </div>
+  </div>
+  <p class="eyebrow">The card</p>
+  <h2>One tap. Every link your business needs.</h2>
+  <p class="desc-text">
+    A custom NFC card for your counter or table &mdash; customers tap once and land on a page you
+    control: reviews, Instagram, website, whatever matters most. No app, no QR code, no reprogramming
+    when you want to change what it says.
+  </p>
+  <a href="#contact" class="cta-btn">Get Now</a>
+</section>
+
 <section class="bottom" id="about">
   <p class="eyebrow">About Publik</p>
   <h2>A marketing agency producing short-form video and smart NFC engagement tools, built to order.</h2>
@@ -490,7 +579,7 @@
     or reach its website. Every project is scoped and delivered per order.
   </p>
 
-  <div class="contacts">
+  <div class="contacts" id="contact">
     <div class="contact-card">
       <div class="name">Artemii Graf</div>
       <div class="role">Co-Founder &amp; CEO</div>
