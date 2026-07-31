@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Publik — Admin</title>
+<style>
+  :root{
+    --bg:#06060B;
+    --ink:#F5F5F2;
+    --ink-soft:#9C9AA8;
+    --lime:#D6FF3F;
+    --border:rgba(255,255,255,.14);
+    --card-bg:#111116;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    background:var(--bg);
+    color:var(--ink);
+    padding:6vh 6vw 10vh;
+  }
+  .wrap{ max-width:760px; margin:0 auto; }
+  .badge{
+    width:44px; height:44px; background:var(--lime); border-radius:12px;
+    display:flex; align-items:center; justify-content:center;
+    font-weight:800; color:#111; margin-bottom:18px;
+  }
+  h1{ font-size:1.3rem; font-weight:800; margin-bottom:4px; }
+  .hint{ color:var(--ink-soft); font-size:.85rem; margin-bottom:28px; }
+
+  .summary-row{ display:flex; gap:.9rem; margin-bottom:1.8rem; flex-wrap:wrap; }
+  .summary{
+    flex:1; min-width:120px;
+    background:var(--card-bg); border:1px solid var(--border); border-radius:14px;
+    padding:1.2rem 1.3rem;
+  }
+  .summary .big{ font-size:1.9rem; font-weight:800; color:var(--lime); }
+  .summary .label{ color:var(--ink-soft); font-size:.78rem; margin-top:.2rem; }
+
+  .client-card{
+    background:var(--card-bg); border:1px solid var(--border); border-radius:14px;
+    padding:1.3rem 1.5rem; margin-bottom:.9rem;
+  }
+  .client-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; flex-wrap:wrap; }
+  .client-name{ font-weight:800; font-size:1.05rem; }
+  .client-tagline{ color:var(--ink-soft); font-size:.85rem; margin-top:.2rem; }
+  .client-id{ color:#5A5850; font-size:.72rem; margin-top:.3rem; font-family:monospace; }
+  .client-stats{ display:flex; gap:1.4rem; flex-shrink:0; }
+  .client-stat .n{ font-weight:800; color:var(--lime); font-size:1.1rem; text-align:right; }
+  .client-stat .l{ color:var(--ink-soft); font-size:.7rem; text-align:right; }
+
+  .client-links{ display:flex; gap:.6rem; margin-top:1rem; flex-wrap:wrap; }
+  .client-links a{
+    color:var(--ink); text-decoration:none; font-size:.8rem; font-weight:700;
+    border:1px solid var(--border); border-radius:8px; padding:.4rem .8rem;
+  }
+  .client-links a:hover{ border-color:var(--lime); color:var(--lime); }
+
+  .empty{
+    color:var(--ink-soft); font-size:.9rem; border:1px dashed var(--border);
+    border-radius:12px; padding:1.4rem 1.6rem;
+  }
+  .center-msg{ text-align:center; padding-top:12vh; color:var(--ink-soft); }
+</style>
+</head>
+<body>
+
+<div class="wrap" id="wrap">
+  <div class="center-msg" id="state">Loading&hellip;</div>
+</div>
+
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+(function () {
+  const params = new URLSearchParams(window.location.search);
+  const adminKey = params.get('key');
+  const wrap = document.getElementById('wrap');
+
+  function supabaseConfigured() {
+    const c = window.PUBLIK_CONFIG || {};
+    return c.SUPABASE_URL && c.SUPABASE_ANON_KEY &&
+      !c.SUPABASE_URL.includes('PASTE_') && !c.SUPABASE_ANON_KEY.includes('PASTE_');
+  }
+
+  function showMessage(text) {
+    wrap.innerHTML = `<div class="center-msg">${text}</div>`;
+  }
+
+  if (!adminKey) {
+    showMessage("This admin link is missing its key.");
+    return;
+  }
+
+  if (!supabaseConfigured() || !window.supabase) {
+    showMessage("Admin panel isn't connected yet.");
+    return;
+  }
+
+  const client = window.supabase.createClient(window.PUBLIK_CONFIG.SUPABASE_URL, window.PUBLIK_CONFIG.SUPABASE_ANON_KEY);
+
+  function timeAgo(iso) {
+    const diffMs = Date.now() - new Date(iso).getTime();
+    const mins = Math.floor(diffMs / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return mins + 'm ago';
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return hours + 'h ago';
+    const days = Math.floor(hours / 24);
+    return days + 'd ago';
+  }
+
+  function renderDashboard(rows) {
+    const totalClients = rows.length;
+    const totalTaps = rows.reduce((sum, r) => sum + Number(r.taps), 0);
+    const totalClicks = rows.reduce((sum, r) => sum + Number(r.link_clicks), 0);
+
+    const cardsHtml = rows.length ? rows.map(r => {
+      const name = r.business || `Unnamed card (${r.id})`;
+      const viewUrl = `p.html?id=${encodeURIComponent(r.id)}`;
+      const editUrl = `edit.html?id=${encodeURIComponent(r.id)}&key=${encodeURIComponent(r.edit_key)}`;
+      const statsUrl = `stats.html?id=${encodeURIComponent(r.id)}&key=${encodeURIComponent(r.edit_key)}`;
+      return `
+        <div class="client-card">
+          <div class="client-top">
+            <div>
+              <div class="client-name">${name}</div>
+              ${r.tagline ? `<div class="client-tagline">${r.tagline}</div>` : ''}
+              <div class="client-id">id: ${r.id} &middot; updated ${timeAgo(r.updated_at)}</div>
+            </div>
+            <div class="client-stats">
+              <div class="client-stat"><div class="n">${r.taps}</div><div class="l">taps</div></div>
+              <div class="client-stat"><div class="n">${r.link_clicks}</div><div class="l">clicks</div></div>
+            </div>
+          </div>
+          <div class="client-links">
+            <a href="${viewUrl}" target="_blank">View card</a>
+            <a href="${editUrl}" target="_blank">Edit link</a>
+            <a href="${statsUrl}" target="_blank">Stats</a>
+          </div>
+        </div>
+      `;
+    }).join('') : `<div class="empty">No clients onboarded yet — once you create a card, it'll show up here.</div>`;
+
+    wrap.innerHTML = `
+      <div class="badge">P</div>
+      <h1>All clients</h1>
+      <div class="hint">Visible only with the admin key.</div>
+
+      <div class="summary-row">
+        <div class="summary"><div class="big">${totalClients}</div><div class="label">Clients</div></div>
+        <div class="summary"><div class="big">${totalTaps}</div><div class="label">Total taps</div></div>
+        <div class="summary"><div class="big">${totalClicks}</div><div class="label">Total link clicks</div></div>
+      </div>
+
+      ${cardsHtml}
+    `;
+  }
+
+  client.rpc('admin_verify', { p_admin_key: adminKey }).then(function (verifyRes) {
+    if (verifyRes.error) {
+      showMessage("Couldn't reach the server. Check your connection and reload.");
+      return;
+    }
+    if (!verifyRes.data) {
+      showMessage("Invalid admin key.");
+      return;
+    }
+
+    client.rpc('admin_list_cards', { p_admin_key: adminKey }).then(function (res) {
+      if (res.error) {
+        showMessage("Couldn't load clients. Try again.");
+        return;
+      }
+      renderDashboard(res.data || []);
+    }).catch(function () {
+      showMessage("Couldn't load clients. Try again.");
+    });
+  }).catch(function () {
+    showMessage("Couldn't reach the server. Check your connection and reload.");
+  });
+})();
+</script>
+
+</body>
+</html>
