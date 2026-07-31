@@ -234,6 +234,116 @@
     color:#7A7885;
   }
 
+  .reviews{
+    padding:8vh 6vw 10vh;
+    border-top:1px solid var(--border);
+  }
+  .reviews .eyebrow{
+    color:var(--lime);
+    font-weight:700;
+    letter-spacing:.16em;
+    text-transform:uppercase;
+    font-size:.78rem;
+    margin-bottom:1rem;
+  }
+  .reviews h2{
+    font-size:clamp(1.6rem,3.5vw,2.4rem);
+    font-weight:800;
+    max-width:700px;
+    margin-bottom:1.4rem;
+  }
+  .reviews-empty{
+    color:#8A8896;
+    font-size:.95rem;
+    max-width:480px;
+    border:1px dashed var(--border);
+    border-radius:12px;
+    padding:1.4rem 1.6rem;
+  }
+  .review-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+    gap:1.4rem;
+    max-width:900px;
+  }
+  .review-card{
+    background:var(--bg-alt);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:1.4rem 1.6rem;
+  }
+  .review-card .quote{
+    color:#DAD8E0;
+    font-size:.95rem;
+    line-height:1.6;
+    margin-bottom:1rem;
+  }
+  .review-card .who{
+    color:var(--lime);
+    font-weight:700;
+    font-size:.85rem;
+  }
+
+  .menu-toggle{
+    position:fixed;
+    top:1.05rem;
+    right:6vw;
+    z-index:300;
+    width:32px;
+    height:32px;
+    background:transparent;
+    border:none;
+    cursor:pointer;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+    padding:0;
+  }
+  .menu-toggle span{
+    display:block;
+    width:26px;
+    height:2px;
+    background:var(--ink);
+    transition:transform .3s ease, opacity .3s ease;
+  }
+  .menu-toggle.active span:nth-child(1){ transform:translateY(8px) rotate(45deg); }
+  .menu-toggle.active span:nth-child(2){ opacity:0; }
+  .menu-toggle.active span:nth-child(3){ transform:translateY(-8px) rotate(-45deg); }
+
+  .menu-overlay{
+    position:fixed;
+    inset:0;
+    z-index:200;
+    background:var(--bg);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:2.4rem;
+    opacity:0;
+    pointer-events:none;
+    transform:translateY(-10px);
+    transition:opacity .35s ease, transform .35s ease;
+  }
+  .menu-overlay.active{
+    opacity:1;
+    pointer-events:auto;
+    transform:translateY(0);
+  }
+  .menu-link{
+    color:var(--ink);
+    text-decoration:none;
+    font-size:clamp(1.6rem,5vw,2.6rem);
+    font-weight:800;
+    letter-spacing:.02em;
+    transition:color .15s ease;
+  }
+  .menu-link:hover{
+    color:var(--lime);
+  }
+
   @media (max-width:720px){
     .row, .row.reverse, .row.align-right{
       flex-direction:column;
@@ -252,7 +362,17 @@
 
 <header>Publik</header>
 
-<section class="intro">
+<button class="menu-toggle" id="menuToggle" aria-label="Open menu">
+  <span></span><span></span><span></span>
+</button>
+
+<nav class="menu-overlay" id="menuOverlay">
+  <a href="#portfolio" class="menu-link">Portfolio</a>
+  <a href="#about" class="menu-link">About Us</a>
+  <a href="#reviews" class="menu-link">Client Reviews</a>
+</nav>
+
+<section class="intro" id="portfolio">
   <p class="eyebrow">Selected work</p>
   <h1>A look at the kind of short-form video we produce.</h1>
 </section>
@@ -266,7 +386,6 @@
         <video muted loop playsinline src="video-1-lamp-web.mp4"></video>
       </div>
       <div class="desc">
-        <span class="num">1</span>
         A close-up product shot of a warm, glowing table lamp, built to put the lighting design front and center.
       </div>
     </div>
@@ -279,7 +398,6 @@
         <video muted loop playsinline src="video-2-bedframe-web.mp4"></video>
       </div>
       <div class="desc">
-        <span class="num">2</span>
         An architectural close-up of a bed frame's underside, showing off the joinery and craftsmanship of the piece.
       </div>
     </div>
@@ -292,7 +410,6 @@
         <video muted loop playsinline src="video-3-desertvan-web.mp4"></video>
       </div>
       <div class="desc">
-        <span class="num">3</span>
         A branded van moving along a wide desert highway, taking the promotion straight to the road.
       </div>
     </div>
@@ -305,7 +422,6 @@
         <video muted loop playsinline src="video-4-cafe-web.mp4"></video>
       </div>
       <div class="desc">
-        <span class="num">4</span>
         A smooth, continuous walkthrough of a modern coffee shop interior, shot like a cinematic ad.
       </div>
     </div>
@@ -319,7 +435,6 @@
             <video muted loop playsinline src="video-5-nightvenue-web.mp4"></video>
         </div>
         <div class="desc">
-          <span class="num">5</span>
           A moody, vertical night shot of a venue's entrance, framed for Stories and Reels.
         </div>
       </div>
@@ -328,7 +443,6 @@
             <video muted loop playsinline src="video-6-superhero-web.mp4"></video>
         </div>
         <div class="desc">
-          <span class="num">6</span>
           A stylized concept spot bringing a superhero character to a cozy café counter, for a bolder promo.
         </div>
       </div>
@@ -342,8 +456,21 @@
         <video muted loop playsinline src="video-7-bedroom-web.mp4"></video>
       </div>
       <div class="desc">
-        <span class="num">7</span>
         A calm, continuous interior shot of a bedroom, designed to show off the space and its finish.
+      </div>
+    </div>
+  </div>
+
+  <!-- 8: desert sand, vertical, description below -->
+  <div class="pair">
+    <div class="row" style="justify-content:center;">
+      <div class="row stack">
+        <div class="video-frame size-vertical" data-video="8">
+          <video muted loop playsinline src="video-8-desertsand-web.mp4"></video>
+        </div>
+        <div class="desc">
+          A vertical shot of desert sand blowing across the dunes, framed for Stories and Reels.
+        </div>
       </div>
     </div>
   </div>
@@ -354,7 +481,7 @@
   <p>Not all this is&hellip;</p>
 </section>
 
-<section class="bottom">
+<section class="bottom" id="about">
   <p class="eyebrow">About Publik</p>
   <h2>A marketing agency producing short-form video and smart NFC engagement tools, built to order.</h2>
   <p class="about">
@@ -381,6 +508,16 @@
   <p class="footline">Publik &middot; Dubai, UAE</p>
 </section>
 
+<section class="reviews" id="reviews">
+  <p class="eyebrow">Client reviews</p>
+  <h2>What clients say</h2>
+  <div id="reviewsContent">
+    <p class="reviews-empty">We're just getting started &mdash; check back soon for feedback from the businesses we've worked with.</p>
+  </div>
+</section>
+
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
   // Star field
   const starsContainer = document.getElementById('stars');
@@ -416,6 +553,52 @@
     });
   }, { threshold: 0.2 });
   pairs.forEach(p => observer.observe(p));
+
+  // Full-screen menu
+  const menuToggle = document.getElementById('menuToggle');
+  const menuOverlay = document.getElementById('menuOverlay');
+
+  function closeMenu() {
+    menuOverlay.classList.remove('active');
+    menuToggle.classList.remove('active');
+    document.body.style.overflow = '';
+  }
+
+  menuToggle.addEventListener('click', () => {
+    const isOpen = menuOverlay.classList.toggle('active');
+    menuToggle.classList.toggle('active', isOpen);
+    document.body.style.overflow = isOpen ? 'hidden' : '';
+  });
+
+  menuOverlay.querySelectorAll('.menu-link').forEach(link => {
+    link.addEventListener('click', closeMenu);
+  });
+
+  // Load approved reviews from Supabase, if connected
+  (function loadReviews() {
+    const config = window.PUBLIK_CONFIG || {};
+    const configured = config.SUPABASE_URL && config.SUPABASE_ANON_KEY &&
+      !config.SUPABASE_URL.includes('PASTE_') && !config.SUPABASE_ANON_KEY.includes('PASTE_');
+    if (!configured || !window.supabase) return;
+
+    const client = window.supabase.createClient(config.SUPABASE_URL, config.SUPABASE_ANON_KEY);
+    client.from('testimonials_public').select('*').then(function (res) {
+      if (res.error || !res.data || res.data.length === 0) return;
+
+      const escape = (s) => (s || '').replace(/[&<>"']/g, (c) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[c]));
+
+      const cardsHtml = res.data.map(r => `
+        <div class="review-card">
+          <p class="quote">&ldquo;${escape(r.quote)}&rdquo;</p>
+          <p class="who">${escape(r.name)}${r.company ? ', ' + escape(r.company) : ''}</p>
+        </div>
+      `).join('');
+
+      document.getElementById('reviewsContent').innerHTML = `<div class="review-grid">${cardsHtml}</div>`;
+    }).catch(function () {});
+  })();
 </script>
 
 </body>
