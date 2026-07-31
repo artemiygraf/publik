@@ -297,12 +297,28 @@
     };
   }
 
-  client.rpc('get_card_for_edit', { p_id: id, p_key: key }).then(function (res) {
-    if (res.error || !res.data || res.data.length === 0) {
-      showMessage("This edit link isn't valid. Contact Publik for a new one.");
+  client.rpc('card_exists', { p_id: id }).then(function (existsRes) {
+    if (existsRes.error) {
+      showMessage("Couldn't reach the server. Check your connection and reload.");
       return;
     }
-    renderForm(res.data[0]);
+
+    if (!existsRes.data) {
+      // Brand new id — nothing to load yet, show a blank form.
+      // Saving will create the card and lock it to this key.
+      renderForm({ business: '', tagline: '', photo: '', links: [] });
+      return;
+    }
+
+    client.rpc('get_card_for_edit', { p_id: id, p_key: key }).then(function (res) {
+      if (res.error || !res.data || res.data.length === 0) {
+        showMessage("This edit link isn't valid. Contact Publik for a new one.");
+        return;
+      }
+      renderForm(res.data[0]);
+    }).catch(function () {
+      showMessage("Couldn't reach the server. Check your connection and reload.");
+    });
   }).catch(function () {
     showMessage("Couldn't reach the server. Check your connection and reload.");
   });
