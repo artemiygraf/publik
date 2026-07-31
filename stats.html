@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Publik — Stats</title>
+<style>
+  :root{
+    --bg:#06060B;
+    --ink:#F5F5F2;
+    --ink-soft:#9C9AA8;
+    --lime:#D6FF3F;
+    --border:rgba(255,255,255,.14);
+    --card-bg:#111116;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    background:var(--bg);
+    color:var(--ink);
+    padding:6vh 6vw 10vh;
+  }
+  .wrap{ max-width:460px; margin:0 auto; }
+  .badge{
+    width:44px; height:44px; background:var(--lime); border-radius:12px;
+    display:flex; align-items:center; justify-content:center;
+    font-weight:800; color:#111; margin-bottom:18px;
+  }
+  h1{ font-size:1.3rem; font-weight:800; margin-bottom:4px; }
+  .hint{ color:var(--ink-soft); font-size:.85rem; margin-bottom:28px; }
+
+  .summary{
+    background:var(--card-bg); border:1px solid var(--border); border-radius:14px;
+    padding:1.4rem 1.6rem; margin-bottom:1.6rem;
+  }
+  .summary .big{ font-size:2.2rem; font-weight:800; color:var(--lime); }
+  .summary .label{ color:var(--ink-soft); font-size:.85rem; margin-top:.2rem; }
+
+  table{ width:100%; border-collapse:collapse; }
+  th{
+    text-align:left; font-size:.72rem; text-transform:uppercase; letter-spacing:.05em;
+    color:var(--ink-soft); font-weight:700; padding:0 0 .6rem; border-bottom:1px solid var(--border);
+  }
+  td{
+    padding:.8rem 0; border-bottom:1px solid var(--border); font-size:.92rem;
+  }
+  td.count{ text-align:right; font-weight:800; color:var(--lime); }
+  td.when{ text-align:right; color:var(--ink-soft); font-size:.8rem; }
+
+  .empty{
+    color:var(--ink-soft); font-size:.9rem; border:1px dashed var(--border);
+    border-radius:12px; padding:1.4rem 1.6rem;
+  }
+  .center-msg{ text-align:center; padding-top:12vh; color:var(--ink-soft); }
+</style>
+</head>
+<body>
+
+<div class="wrap" id="wrap">
+  <div class="center-msg" id="state">Loading&hellip;</div>
+</div>
+
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+(function () {
+  const params = new URLSearchParams(window.location.search);
+  const id = params.get('id');
+  const key = params.get('key');
+  const wrap = document.getElementById('wrap');
+
+  function supabaseConfigured() {
+    const c = window.PUBLIK_CONFIG || {};
+    return c.SUPABASE_URL && c.SUPABASE_ANON_KEY &&
+      !c.SUPABASE_URL.includes('PASTE_') && !c.SUPABASE_ANON_KEY.includes('PASTE_');
+  }
+
+  function showMessage(text) {
+    wrap.innerHTML = `<div class="center-msg">${text}</div>`;
+  }
+
+  if (!id || !key) {
+    showMessage("This stats link is missing its access key. Ask Publik for your full link.");
+    return;
+  }
+
+  if (!supabaseConfigured() || !window.supabase) {
+    showMessage("Stats aren't connected yet. Ask Publik to finish setup.");
+    return;
+  }
+
+  const client = window.supabase.createClient(window.PUBLIK_CONFIG.SUPABASE_URL, window.PUBLIK_CONFIG.SUPABASE_ANON_KEY);
+
+  function timeAgo(iso) {
+    const diffMs = Date.now() - new Date(iso).getTime();
+    const mins = Math.floor(diffMs / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return mins + 'm ago';
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return hours + 'h ago';
+    const days = Math.floor(hours / 24);
+    return days + 'd ago';
+  }
+
+  function renderStats(rows) {
+    const pageView = rows.find(r => r.link_label === '__page_view__');
+    const linkRows = rows.filter(r => r.link_label !== '__page_view__');
+    const totalTaps = pageView ? pageView.click_count : 0;
+
+    const rowsHtml = linkRows.length
+      ? linkRows.map(r => `
+          <tr>
+            <td>${r.link_label}</td>
+            <td class="count">${r.click_count}</td>
+            <td class="when">${timeAgo(r.last_clicked)}</td>
+          </tr>
+        `).join('')
+      : '';
+
+    wrap.innerHTML = `
+      <div class="badge">P</div>
+      <h1>Card stats</h1>
+      <div class="hint">Only visible to you, via your own edit link.</div>
+
+      <div class="summary">
+        <div class="big">${totalTaps}</div>
+        <div class="label">Total taps of your card</div>
+      </div>
+
+      ${linkRows.length ? `
+        <table>
+          <thead>
+            <tr><th>Link</th><th style="text-align:right;">Clicks</th><th style="text-align:right;">Last</th></tr>
+          </thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+      ` : `<div class="empty">No link clicks yet — once visitors start tapping the buttons on your page, they'll show up here.</div>`}
+    `;
+  }
+
+  client.rpc('card_exists', { p_id: id }).then(function (existsRes) {
+    if (existsRes.error) {
+      showMessage("Couldn't reach the server. Check your connection and reload.");
+      return;
+    }
+    if (!existsRes.data) {
+      showMessage("No data for this card yet.");
+      return;
+    }
+
+    client.rpc('get_card_for_edit', { p_id: id, p_key: key }).then(function (authRes) {
+      if (authRes.error || !authRes.data || authRes.data.length === 0) {
+        showMessage("This stats link isn't valid. Contact Publik for a new one.");
+        return;
+      }
+
+      client.rpc('get_click_stats', { p_id: id, p_key: key }).then(function (statsRes) {
+        if (statsRes.error) {
+          showMessage("Couldn't load stats. Try again.");
+          return;
+        }
+        renderStats(statsRes.data || []);
+      }).catch(function () {
+        showMessage("Couldn't load stats. Try again.");
+      });
+    }).catch(function () {
+      showMessage("Couldn't reach the server. Check your connection and reload.");
+    });
+  }).catch(function () {
+    showMessage("Couldn't reach the server. Check your connection and reload.");
+  });
+})();
+</script>
+
+</body>
+</html>

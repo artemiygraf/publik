@@ -166,13 +166,30 @@
     return `<span class="link-icon">${icon}</span>`;
   }
 
+  function logEvent(linkLabel) {
+    const c = window.PUBLIK_CONFIG || {};
+    if (!c.SUPABASE_URL || !c.SUPABASE_ANON_KEY || c.SUPABASE_URL.includes('PASTE_')) return;
+    try {
+      fetch(c.SUPABASE_URL + '/rest/v1/rpc/log_click', {
+        method: 'POST',
+        keepalive: true,
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': c.SUPABASE_ANON_KEY,
+          'Authorization': 'Bearer ' + c.SUPABASE_ANON_KEY
+        },
+        body: JSON.stringify({ p_card_id: id, p_link_label: linkLabel })
+      });
+    } catch (e) {}
+  }
+
   function renderCard(data) {
     const photoHtml = data.photo
       ? `<img src="${data.photo}" alt="">`
       : (data.business ? data.business.charAt(0).toUpperCase() : 'P');
 
     const linksHtml = (data.links || []).map(l =>
-      `<a class="link-btn" href="${l.url}" target="_top">${iconHtml(l.icon)}<span>${l.label}</span></a>`
+      `<a class="link-btn" href="${l.url}" target="_top" data-label="${l.label.replace(/"/g, '&quot;')}">${iconHtml(l.icon)}<span>${l.label}</span></a>`
     ).join('');
 
     wrap.innerHTML = `
@@ -182,6 +199,14 @@
       <div class="links">${linksHtml}</div>
       <div class="footline">Powered by <a href="https://artemiygraf.github.io/publik/">Publik</a></div>
     `;
+
+    wrap.querySelectorAll('.link-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        logEvent(btn.dataset.label || 'link');
+      });
+    });
+
+    logEvent('__page_view__');
   }
 
   function loadLocalFallback() {
