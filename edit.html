@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Publik — Edit your page</title>
+<style>
+  :root{
+    --bg:#06060B;
+    --ink:#F5F5F2;
+    --ink-soft:#9C9AA8;
+    --lime:#D6FF3F;
+    --border:rgba(255,255,255,.14);
+    --card-bg:#111116;
+    --danger:#FF6B6B;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    background:var(--bg);
+    color:var(--ink);
+    padding:6vh 6vw 10vh;
+  }
+  .wrap{ max-width:440px; margin:0 auto; }
+  .badge{
+    width:44px; height:44px; background:var(--lime); border-radius:12px;
+    display:flex; align-items:center; justify-content:center;
+    font-weight:800; color:#111; margin-bottom:18px;
+  }
+  h1{ font-size:1.3rem; font-weight:800; margin-bottom:4px; }
+  .hint{ color:var(--ink-soft); font-size:.85rem; margin-bottom:28px; }
+  label{
+    display:block; font-size:.78rem; font-weight:700; letter-spacing:.03em;
+    text-transform:uppercase; color:var(--ink-soft); margin-bottom:6px; margin-top:20px;
+  }
+  input[type=text], textarea{
+    width:100%; background:var(--card-bg); border:1px solid var(--border);
+    color:var(--ink); padding:12px 14px; border-radius:10px; font-size:.95rem;
+    font-family:inherit;
+  }
+  textarea{ resize:vertical; min-height:64px; }
+  input[type=text]:focus, textarea:focus{ outline:none; border-color:var(--lime); }
+
+  .photo-row{ display:flex; align-items:center; gap:14px; }
+  .photo-preview{
+    width:56px; height:56px; border-radius:14px; background:var(--card-bg);
+    border:1px solid var(--border); overflow:hidden; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center; color:var(--ink-soft); font-size:.8rem;
+  }
+  .photo-preview img{ width:100%; height:100%; object-fit:cover; }
+  .btn-file{
+    background:var(--card-bg); border:1px solid var(--border); color:var(--ink);
+    padding:9px 14px; border-radius:9px; font-size:.85rem; font-weight:700; cursor:pointer;
+  }
+  input[type=file]{ display:none; }
+
+  .link-card{
+    background:var(--card-bg); border:1px solid var(--border); border-radius:12px;
+    padding:14px; margin-top:12px;
+  }
+  .link-card .row{ display:flex; gap:10px; align-items:center; }
+  .link-card label{ margin-top:12px; }
+  .link-card label:first-of-type{ margin-top:0; }
+  .remove-link{
+    background:none; border:none; color:var(--danger); font-size:.8rem; font-weight:700;
+    cursor:pointer; margin-top:12px;
+  }
+
+  .add-link{
+    width:100%; margin-top:14px; padding:14px; border-radius:12px;
+    border:1.5px dashed var(--border); background:none; color:var(--ink-soft);
+    font-weight:700; font-size:.9rem; cursor:pointer;
+  }
+  .add-link:hover{ border-color:var(--lime); color:var(--lime); }
+
+  .save-btn{
+    width:100%; margin-top:32px; padding:16px; border-radius:12px; border:none;
+    background:var(--lime); color:#111; font-weight:800; font-size:1rem; cursor:pointer;
+  }
+  .save-btn:active{ transform:scale(.98); }
+  .save-btn:disabled{ opacity:.5; }
+
+  .status{ margin-top:14px; font-size:.85rem; text-align:center; min-height:1.2em; }
+  .status.ok{ color:var(--lime); }
+  .status.err{ color:var(--danger); }
+
+  .view-link{ display:block; text-align:center; margin-top:10px; font-size:.85rem; color:var(--ink-soft); }
+  .view-link a{ color:var(--lime); }
+
+  .center-msg{ text-align:center; padding-top:12vh; color:var(--ink-soft); }
+</style>
+</head>
+<body>
+
+<div class="wrap" id="wrap">
+  <div class="center-msg" id="state">Loading&hellip;</div>
+</div>
+
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+(function () {
+  const params = new URLSearchParams(window.location.search);
+  const id = params.get('id');
+  const key = params.get('key');
+  const wrap = document.getElementById('wrap');
+
+  function supabaseConfigured() {
+    const c = window.PUBLIK_CONFIG || {};
+    return c.SUPABASE_URL && c.SUPABASE_ANON_KEY &&
+      !c.SUPABASE_URL.includes('PASTE_') && !c.SUPABASE_ANON_KEY.includes('PASTE_');
+  }
+
+  function showMessage(text) {
+    wrap.innerHTML = `<div class="center-msg">${text}</div>`;
+  }
+
+  if (!id || !key) {
+    showMessage("This edit link is missing its access key. Ask Publik for your full edit link.");
+    return;
+  }
+
+  if (!supabaseConfigured() || !window.supabase) {
+    showMessage("Editing isn't connected yet. Ask Publik to finish setup.");
+    return;
+  }
+
+  const client = window.supabase.createClient(window.PUBLIK_CONFIG.SUPABASE_URL, window.PUBLIK_CONFIG.SUPABASE_ANON_KEY);
+
+  function fileToDataURI(file, maxDim) {
+    return new Promise(function (resolve, reject) {
+      const reader = new FileReader();
+      reader.onload = function () {
+        const img = new Image();
+        img.onload = function () {
+          let w = img.width, h = img.height;
+          if (w > h && w > maxDim) { h = Math.round(h * maxDim / w); w = maxDim; }
+          else if (h > maxDim) { w = Math.round(w * maxDim / h); h = maxDim; }
+          const canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          resolve(canvas.toDataURL('image/jpeg', 0.72));
+        };
+        img.onerror = reject;
+        img.src = reader.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function renderForm(data) {
+    let links = (data.links || []).slice();
+
+    wrap.innerHTML = `
+      <div class="badge">P</div>
+      <h1>Edit your page</h1>
+      <div class="hint">Changes go live as soon as you save — this is what everyone sees when they tap your card.</div>
+
+      <label>Photo / logo</label>
+      <div class="photo-row">
+        <div class="photo-preview" id="photoPreview">${data.photo ? `<img src="${data.photo}">` : 'None'}</div>
+        <button type="button" class="btn-file" id="photoBtn">Upload image</button>
+        <input type="file" id="photoInput" accept="image/*">
+      </div>
+
+      <label>Business name</label>
+      <input type="text" id="businessInput" value="${(data.business || '').replace(/"/g, '&quot;')}" placeholder="Your business name">
+
+      <label>Short description</label>
+      <textarea id="taglineInput" placeholder="What you do, in a line or two">${data.tagline || ''}</textarea>
+
+      <label>Links</label>
+      <div id="linksList"></div>
+      <button type="button" class="add-link" id="addLinkBtn">+ Add a link</button>
+
+      <button type="button" class="save-btn" id="saveBtn">Save changes</button>
+      <div class="status" id="statusMsg"></div>
+      <div class="view-link">See your live page: <a href="p.html?id=${encodeURIComponent(id)}" target="_blank">p.html?id=${id}</a></div>
+    `;
+
+    let photoData = data.photo || '';
+
+    document.getElementById('photoBtn').onclick = function () {
+      document.getElementById('photoInput').click();
+    };
+    document.getElementById('photoInput').onchange = function (e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      fileToDataURI(file, 300).then(function (uri) {
+        photoData = uri;
+        document.getElementById('photoPreview').innerHTML = `<img src="${uri}">`;
+      });
+    };
+
+    const linksList = document.getElementById('linksList');
+
+    function renderLinks() {
+      linksList.innerHTML = '';
+      links.forEach(function (link, i) {
+        const card = document.createElement('div');
+        card.className = 'link-card';
+        card.innerHTML = `
+          <label>Label (e.g. "Leave a review")</label>
+          <input type="text" data-field="label" data-i="${i}" value="${(link.label || '').replace(/"/g, '&quot;')}">
+          <label>Link URL</label>
+          <input type="text" data-field="url" data-i="${i}" value="${(link.url || '').replace(/"/g, '&quot;')}" placeholder="https://...">
+          <label>Icon</label>
+          <div class="photo-row">
+            <div class="photo-preview" id="linkIconPreview${i}" style="width:36px;height:36px;font-size:.7rem;">${
+              link.icon && (link.icon.startsWith('http') || link.icon.startsWith('data:'))
+                ? `<img src="${link.icon}">`
+                : (link.icon || '')
+            }</div>
+            <input type="text" data-field="iconEmoji" data-i="${i}" placeholder="Paste an emoji, e.g. ⭐" style="max-width:140px;" value="${(link.icon && !link.icon.startsWith('http') && !link.icon.startsWith('data:')) ? link.icon : ''}">
+            <button type="button" class="btn-file" data-upload="${i}">Upload icon</button>
+            <input type="file" id="linkIconInput${i}" accept="image/*" style="display:none;">
+          </div>
+          <button type="button" class="remove-link" data-remove="${i}">Remove this link</button>
+        `;
+        linksList.appendChild(card);
+      });
+
+      linksList.querySelectorAll('input[data-field="label"]').forEach(function (el) {
+        el.oninput = function () { links[+el.dataset.i].label = el.value; };
+      });
+      linksList.querySelectorAll('input[data-field="url"]').forEach(function (el) {
+        el.oninput = function () { links[+el.dataset.i].url = el.value; };
+      });
+      linksList.querySelectorAll('input[data-field="iconEmoji"]').forEach(function (el) {
+        el.oninput = function () {
+          links[+el.dataset.i].icon = el.value;
+          document.getElementById('linkIconPreview' + el.dataset.i).innerHTML = el.value;
+        };
+      });
+      linksList.querySelectorAll('[data-upload]').forEach(function (btn) {
+        btn.onclick = function () {
+          document.getElementById('linkIconInput' + btn.dataset.upload).click();
+        };
+      });
+      links.forEach(function (link, i) {
+        const fileInput = document.getElementById('linkIconInput' + i);
+        if (fileInput) {
+          fileInput.onchange = function (e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            fileToDataURI(file, 120).then(function (uri) {
+              links[i].icon = uri;
+              document.getElementById('linkIconPreview' + i).innerHTML = `<img src="${uri}">`;
+            });
+          };
+        }
+      });
+      linksList.querySelectorAll('[data-remove]').forEach(function (btn) {
+        btn.onclick = function () {
+          links.splice(+btn.dataset.remove, 1);
+          renderLinks();
+        };
+      });
+    }
+
+    renderLinks();
+
+    document.getElementById('addLinkBtn').onclick = function () {
+      links.push({ label: '', url: '', icon: '' });
+      renderLinks();
+    };
+
+    document.getElementById('saveBtn').onclick = function () {
+      const saveBtn = document.getElementById('saveBtn');
+      const statusMsg = document.getElementById('statusMsg');
+      saveBtn.disabled = true;
+      statusMsg.textContent = 'Saving…';
+      statusMsg.className = 'status';
+
+      const business = document.getElementById('businessInput').value.trim();
+      const tagline = document.getElementById('taglineInput').value.trim();
+      const cleanLinks = links.filter(function (l) { return l.label && l.url; });
+
+      client.rpc('upsert_card', {
+        p_id: id, p_key: key, p_business: business, p_tagline: tagline,
+        p_photo: photoData, p_links: cleanLinks
+      }).then(function (res) {
+        saveBtn.disabled = false;
+        if (res.error || res.data === false) {
+          statusMsg.textContent = 'Could not save — your access key may be invalid.';
+          statusMsg.className = 'status err';
+        } else {
+          statusMsg.textContent = 'Saved. Your page is live.';
+          statusMsg.className = 'status ok';
+        }
+      }).catch(function () {
+        saveBtn.disabled = false;
+        statusMsg.textContent = 'Something went wrong. Try again.';
+        statusMsg.className = 'status err';
+      });
+    };
+  }
+
+  client.rpc('get_card_for_edit', { p_id: id, p_key: key }).then(function (res) {
+    if (res.error || !res.data || res.data.length === 0) {
+      showMessage("This edit link isn't valid. Contact Publik for a new one.");
+      return;
+    }
+    renderForm(res.data[0]);
+  }).catch(function () {
+    showMessage("Couldn't reach the server. Check your connection and reload.");
+  });
+})();
+</script>
+
+</body>
+</html>
