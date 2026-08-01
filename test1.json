@@ -1,0 +1,9 @@
+{
+  "business": "Publik",
+  "tagline": "Marketing agency — short-form video and NFC engagement cards.",
+  "photo": "",
+  "links": [
+    { "label": "Visit our website", "url": "https://publik.tech/", "icon": "🌐" },
+    { "label": "Follow on Instagram", "url": "https://instagram.com/REPLACE_ME", "icon": "📷" }
+  ]
+}
