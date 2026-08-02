@@ -165,12 +165,13 @@
     }
   }
 
-  function renderError() {
+  function renderError(debugInfo) {
     wrap.innerHTML = `
       <div class="badge">P</div>
       <h1>Link not set up yet</h1>
       <div class="sub">This card hasn't been assigned any destinations. Contact the business or Publik to get this fixed.</div>
       <div class="footline">Publik &middot; publik.link</div>
+      ${debugInfo ? `<div class="footline" style="margin-top:14px;word-break:break-all;color:#888;">DEBUG: ${debugInfo}</div>` : ''}
     `;
   }
 
@@ -230,14 +231,14 @@
     awardTapPoints();
   }
 
-  function loadLocalFallback() {
+  function loadLocalFallback(debugInfo) {
     fetch('data/' + encodeURIComponent(id) + '.json')
       .then(function (res) {
         if (!res.ok) throw new Error('not found');
         return res.json();
       })
       .then(renderCard)
-      .catch(renderError);
+      .catch(function () { renderError(debugInfo); });
   }
 
   function supabaseConfigured() {
@@ -256,14 +257,18 @@
     client.from('cards_public').select('*').eq('id', id).single()
       .then(function (res) {
         if (res.error || !res.data) {
-          loadLocalFallback();
+          console.error('Publik: cards_public query returned error', res.error);
+          loadLocalFallback('query error — ' + (res.error ? (res.error.message || res.error.code || JSON.stringify(res.error)) : 'no data returned'));
         } else {
           renderCard(res.data);
         }
       })
-      .catch(loadLocalFallback);
+      .catch(function (e) {
+        console.error('Publik: cards_public query threw', e);
+        loadLocalFallback('query threw — ' + (e && e.message ? e.message : String(e)));
+      });
   } else {
-    loadLocalFallback();
+    loadLocalFallback('supabase not configured or library missing — configured=' + supabaseConfigured() + ' lib=' + (typeof window.supabase));
   }
 })();
 </script>
