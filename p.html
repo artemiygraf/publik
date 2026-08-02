@@ -192,11 +192,15 @@
       `<a class="link-btn" href="${l.url}" target="_top" data-label="${l.label.replace(/"/g, '&quot;')}">${iconHtml(l.icon)}<span>${l.label}</span></a>`
     ).join('');
 
+    const locationHtml = data.location_url
+      ? `<a class="link-btn" href="${data.location_url}" target="_top" data-label="Get directions">${iconHtml('📍')}<span>Get directions</span></a>`
+      : '';
+
     wrap.innerHTML = `
       <div class="badge">${photoHtml}</div>
       <h1>${data.business || 'Welcome'}</h1>
       ${data.tagline ? `<div class="tagline">${data.tagline}</div>` : `<div class="sub">Choose where you'd like to go</div>`}
-      <div class="links">${linksHtml}</div>
+      <div class="links">${linksHtml}${locationHtml}</div>
       <div class="footline">Powered by <a href="https://publik.tech/">Publik</a></div>
     `;
 

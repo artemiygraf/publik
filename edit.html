@@ -127,6 +127,21 @@
     background:none; border:none; color:var(--danger); font-size:.78rem; font-weight:700; cursor:pointer;
   }
   .empty-posts{ color:var(--ink-soft); font-size:.85rem; margin-top:16px; }
+
+  .clamp-text{
+    display:-webkit-box;
+    -webkit-line-clamp:2;
+    -webkit-box-orient:vertical;
+    overflow:hidden;
+  }
+  .clamp-text.expanded{
+    -webkit-line-clamp:unset;
+    overflow:visible;
+  }
+  .read-more-btn{
+    background:none; border:none; color:var(--lime); font-size:.78rem; font-weight:700;
+    cursor:pointer; padding:4px 0 0; display:block;
+  }
 </style>
 </head>
 <body>
@@ -217,6 +232,9 @@
 
       <label>Business name</label>
       <input type="text" id="businessInput" value="${(data.business || '').replace(/"/g, '&quot;')}" placeholder="Your business name">
+
+      <label>Location link</label>
+      <input type="text" id="locationInput" value="${(data.location_url || '').replace(/"/g, '&quot;')}" placeholder="Paste your Google Maps link">
 
       <div class="tab-bar">
         <button type="button" class="tab-btn active" data-tab="card">NFC Card</button>
@@ -385,7 +403,7 @@
           <div class="post-item">
             ${p.image ? `<img src="${p.image}">` : ''}
             <div class="ptitle">${p.title}</div>
-            ${p.body ? `<div class="pbody">${p.body}</div>` : ''}
+            ${p.body ? `<div class="pbody clamp-text">${p.body}</div>` : ''}
             <div class="pmeta">
               <div class="pwhen">${timeAgo(p.created_at)}</div>
               <button type="button" class="pdelete" data-delid="${p.id}">Delete</button>
@@ -393,6 +411,20 @@
           </div>
         `;
       }).join('');
+
+      postList.querySelectorAll('.clamp-text').forEach(function (el) {
+        if (el.scrollHeight > el.clientHeight + 2) {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'read-more-btn';
+          btn.textContent = 'Read more';
+          btn.onclick = function () {
+            const expanded = el.classList.toggle('expanded');
+            btn.textContent = expanded ? 'Show less' : 'Read more';
+          };
+          el.insertAdjacentElement('afterend', btn);
+        }
+      });
 
       postList.querySelectorAll('[data-delid]').forEach(function (btn) {
         btn.onclick = function () {
@@ -472,11 +504,13 @@
       const business = document.getElementById('businessInput').value.trim();
       const tagline = document.getElementById('taglineInput').value.trim();
       const description = document.getElementById('descriptionInput').value.trim();
+      const locationUrl = document.getElementById('locationInput').value.trim();
       const cleanLinks = links.filter(function (l) { return l.label && l.url; });
 
       client.rpc('upsert_card', {
         p_id: id, p_key: key, p_business: business, p_tagline: tagline,
-        p_photo: photoData, p_links: cleanLinks, p_description: description
+        p_photo: photoData, p_links: cleanLinks, p_description: description,
+        p_location_url: locationUrl
       }).then(function (res) {
         saveBtn.disabled = false;
         if (res.error || res.data === false) {
@@ -503,7 +537,7 @@
     if (!existsRes.data) {
       // Brand new id — nothing to load yet, show a blank form.
       // Saving will create the card and lock it to this key.
-      renderForm({ business: '', tagline: '', photo: '', links: [], description: '' });
+      renderForm({ business: '', tagline: '', photo: '', links: [], description: '', location_url: '' });
       return;
     }
 

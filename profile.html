@@ -34,6 +34,11 @@
   h1{ font-size:1.7rem; font-weight:800; margin-bottom:8px; }
   .tagline{ color:var(--ink-soft); font-size:1rem; margin-bottom:20px; line-height:1.5; }
   .description{ font-size:.98rem; line-height:1.7; color:var(--ink); margin-bottom:12px; white-space:pre-wrap; }
+  .location-link{
+    display:inline-flex; align-items:center; gap:6px; color:var(--lime); text-decoration:none;
+    font-size:.9rem; font-weight:700; margin-bottom:12px;
+  }
+  .location-link:hover{ text-decoration:underline; }
 
   .divider{ height:1px; background:var(--border); margin:36px 0 28px; }
 
@@ -50,6 +55,21 @@
   .post .ptitle{ font-weight:800; font-size:1.05rem; margin-bottom:6px; }
   .post .pbody{ color:var(--ink-soft); font-size:.92rem; line-height:1.6; white-space:pre-wrap; }
   .post .pwhen{ color:var(--ink-soft); font-size:.75rem; margin-top:12px; }
+
+  .clamp-text{
+    display:-webkit-box;
+    -webkit-line-clamp:2;
+    -webkit-box-orient:vertical;
+    overflow:hidden;
+  }
+  .clamp-text.expanded{
+    -webkit-line-clamp:unset;
+    overflow:visible;
+  }
+  .read-more-btn{
+    background:none; border:none; color:var(--lime); font-size:.82rem; font-weight:700;
+    cursor:pointer; padding:6px 0 0; display:block;
+  }
 
   .empty{
     color:var(--ink-soft); font-size:.9rem; border:1px dashed var(--border);
@@ -106,6 +126,22 @@
     return days + 'd ago';
   }
 
+  function setupReadMore(root) {
+    root.querySelectorAll('.clamp-text').forEach(function (el) {
+      if (el.scrollHeight > el.clientHeight + 2) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'read-more-btn';
+        btn.textContent = 'Read more';
+        btn.onclick = function () {
+          const expanded = el.classList.toggle('expanded');
+          btn.textContent = expanded ? 'Show less' : 'Read more';
+        };
+        el.insertAdjacentElement('afterend', btn);
+      }
+    });
+  }
+
   function render(card, posts) {
     const photoHtml = card.photo
       ? `<img src="${card.photo}">`
@@ -117,7 +153,7 @@
             <div class="post">
               ${p.image ? `<img src="${p.image}">` : ''}
               <div class="ptitle">${p.title}</div>
-              ${p.body ? `<div class="pbody">${p.body}</div>` : ''}
+              ${p.body ? `<div class="pbody clamp-text">${p.body}</div>` : ''}
               <div class="pwhen">${timeAgo(p.created_at)}</div>
             </div>
           `;
@@ -129,7 +165,8 @@
       <div class="photo">${photoHtml}</div>
       <h1>${card.business || 'Publik business'}</h1>
       ${card.tagline ? `<div class="tagline">${card.tagline}</div>` : ''}
-      ${card.description ? `<div class="description">${card.description}</div>` : ''}
+      ${card.location_url ? `<a class="location-link" href="${card.location_url}" target="_blank">📍 Get directions</a>` : ''}
+      ${card.description ? `<div class="description clamp-text">${card.description}</div>` : ''}
 
       <div class="divider"></div>
       <div class="section-title">Updates &amp; offers</div>
@@ -137,6 +174,8 @@
 
       <div class="footline">Part of <a href="https://publik.tech/">Publik</a></div>
     `;
+
+    setupReadMore(wrap);
   }
 
   Promise.all([

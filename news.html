@@ -46,6 +46,21 @@
   .post .pbody{ color:var(--ink-soft); font-size:.93rem; line-height:1.6; white-space:pre-wrap; }
   .post .pwhen{ color:var(--ink-soft); font-size:.75rem; margin-top:12px; }
 
+  .clamp-text{
+    display:-webkit-box;
+    -webkit-line-clamp:2;
+    -webkit-box-orient:vertical;
+    overflow:hidden;
+  }
+  .clamp-text.expanded{
+    -webkit-line-clamp:unset;
+    overflow:visible;
+  }
+  .read-more-btn{
+    background:none; border:none; color:var(--lime); font-size:.82rem; font-weight:700;
+    cursor:pointer; padding:6px 0 0; display:block;
+  }
+
   .empty{
     color:var(--ink-soft); font-size:.95rem; border:1px dashed var(--border);
     border-radius:14px; padding:2rem; text-align:center;
@@ -96,6 +111,22 @@
     return days + 'd ago';
   }
 
+  function setupReadMore(root) {
+    root.querySelectorAll('.clamp-text').forEach(function (el) {
+      if (el.scrollHeight > el.clientHeight + 2) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'read-more-btn';
+        btn.textContent = 'Read more';
+        btn.onclick = function () {
+          const expanded = el.classList.toggle('expanded');
+          btn.textContent = expanded ? 'Show less' : 'Read more';
+        };
+        el.insertAdjacentElement('afterend', btn);
+      }
+    });
+  }
+
   client.from('news_feed_public').select('*').then(function (res) {
     if (res.error) {
       showMessage("Couldn't load Publik News right now.");
@@ -119,11 +150,13 @@
           </a>
           ${p.image ? `<img class="postimg" src="${p.image}">` : ''}
           <div class="ptitle">${p.title}</div>
-          ${p.body ? `<div class="pbody">${p.body}</div>` : ''}
+          ${p.body ? `<div class="pbody clamp-text">${p.body}</div>` : ''}
           <div class="pwhen">${timeAgo(p.created_at)}</div>
         </div>
       `;
     }).join('');
+
+    setupReadMore(feed);
   }).catch(function () {
     showMessage("Couldn't reach the server. Check your connection and reload.");
   });
