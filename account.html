@@ -131,6 +131,7 @@
         <div class="code-label">Your recovery code</div>
         <div class="code-value">${recoveryCode}</div>
         <div class="code-hint">Save this somewhere safe — it's the only way to see this same balance on a different phone or after clearing your browser.</div>
+        <button type="button" class="primary-btn" id="copyCodeBtn" style="margin-top:14px;">Copy code</button>
       </div>
 
       <button type="button" class="link-btn" id="switchBtn">Have a code from another device? Switch account</button>
@@ -157,6 +158,24 @@
   }
 
   function wireRestore() {
+    const copyBtn = document.getElementById('copyCodeBtn');
+    if (copyBtn) {
+      copyBtn.onclick = function () {
+        const codeEl = document.querySelector('.code-value');
+        const code = codeEl ? codeEl.textContent.trim() : '';
+        if (!code) return;
+        const done = function () {
+          copyBtn.textContent = 'Copied!';
+          setTimeout(function () { copyBtn.textContent = 'Copy code'; }, 1800);
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(code).then(done).catch(done);
+        } else {
+          done();
+        }
+      };
+    }
+
     const switchBtn = document.getElementById('switchBtn');
     const restoreSection = document.getElementById('restoreSection');
     if (switchBtn && restoreSection) {

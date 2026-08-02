@@ -132,6 +132,54 @@
     color:var(--ink-soft);
     font-size:.9rem;
   }
+  .rewards-note{
+    margin-top:20px;
+    font-size:.82rem;
+    color:var(--ink-soft);
+    line-height:1.6;
+    text-align:center;
+  }
+  .rewards-note b{ color:var(--lime); }
+  .rewards-note button.link-inline{
+    background:none;
+    border:none;
+    color:var(--lime);
+    text-decoration:underline;
+    font-size:.82rem;
+    font-family:inherit;
+    cursor:pointer;
+    padding:0;
+  }
+  .rewards-note input[type=text]{
+    margin-top:8px;
+    width:100%;
+    background:var(--card-bg);
+    border:1px solid var(--border);
+    color:var(--ink);
+    padding:8px 10px;
+    border-radius:8px;
+    font-size:.85rem;
+    text-transform:uppercase;
+    letter-spacing:.04em;
+    font-family:inherit;
+  }
+  .rewards-note .restore-row{
+    margin-top:10px;
+    display:flex;
+    gap:8px;
+  }
+  .rewards-note .restore-row button.primary{
+    background:var(--lime);
+    color:#111;
+    border:none;
+    border-radius:8px;
+    padding:8px 14px;
+    font-weight:700;
+    font-size:.82rem;
+    font-family:inherit;
+    cursor:pointer;
+    white-space:nowrap;
+  }
 </style>
 </head>
 <body>
@@ -150,18 +198,107 @@
   const wrap = document.getElementById('wrap');
   let client = null;
 
+  const CODE_RE = /^[0-9A-Za-z]{6,14}$/;
+
+  function rewardsNoteEl() {
+    return document.getElementById('rewardsNote');
+  }
+
+  function showPointsState(points) {
+    const el = rewardsNoteEl();
+    if (!el) return;
+    el.innerHTML = (points === 1)
+      ? `<b>1</b> point earned here.`
+      : `You have <b>${points}</b> points here.`;
+  }
+
+  function showNewAccountState() {
+    const el = rewardsNoteEl();
+    if (!el) return;
+    el.innerHTML = `<b>+1</b> point earned. Tapped a Publik card before? <button type="button" class="link-inline" id="restoreBtn">Restore my points</button>`;
+    const btn = document.getElementById('restoreBtn');
+    if (btn) btn.addEventListener('click', handleRestoreClick);
+  }
+
+  function showManualRestoreForm(message) {
+    const el = rewardsNoteEl();
+    if (!el) return;
+    el.innerHTML = `
+      ${message ? `<div>${message}</div>` : ''}
+      <div class="restore-row">
+        <input type="text" id="restoreCodeInput" placeholder="e.g. 3F9A2B7C" maxlength="14">
+        <button type="button" class="primary" id="restoreSubmitBtn">Restore</button>
+      </div>
+    `;
+    const submitBtn = document.getElementById('restoreSubmitBtn');
+    if (submitBtn) {
+      submitBtn.addEventListener('click', function () {
+        const input = document.getElementById('restoreCodeInput');
+        const code = (input && input.value ? input.value : '').trim();
+        if (!code) return;
+        submitRestore(code);
+      });
+    }
+  }
+
+  function submitRestore(code) {
+    if (!client) return;
+    Promise.resolve(client.rpc('restore_customer_by_code', { p_recovery_code: code })).then(function (res) {
+      if (res.error || !res.data || !res.data[0]) {
+        showManualRestoreForm("That code didn't match. Try again, or leave it — this tap still counted.");
+        return;
+      }
+      const row = res.data[0];
+      localStorage.setItem('publik_customer_token', row.token);
+      return Promise.resolve(client.rpc('award_tap_points', { p_token: row.token, p_card_id: id })).then(function (awardRes) {
+        const pts = (!awardRes.error && typeof awardRes.data === 'number') ? awardRes.data : (row.points + 1);
+        const el = rewardsNoteEl();
+        if (el) el.innerHTML = `Restored — you have <b>${pts}</b> points.`;
+      });
+    }).catch(function () {
+      showManualRestoreForm("Couldn't reach the server. Try again.");
+    });
+  }
+
+  function handleRestoreClick() {
+    if (!navigator.clipboard || !navigator.clipboard.readText) {
+      showManualRestoreForm('Enter the recovery code you saved last time:');
+      return;
+    }
+    navigator.clipboard.readText().then(function (text) {
+      const candidate = (text || '').trim().toUpperCase();
+      if (CODE_RE.test(candidate)) {
+        submitRestore(candidate);
+      } else {
+        showManualRestoreForm('Enter the recovery code you saved last time:');
+      }
+    }).catch(function () {
+      showManualRestoreForm('Enter the recovery code you saved last time:');
+    });
+  }
+
   function awardTapPoints() {
     if (!client) return;
     try {
       const existingToken = localStorage.getItem('publik_customer_token');
       if (existingToken) {
-        Promise.resolve(client.rpc('award_tap_points', { p_token: existingToken, p_card_id: id })).catch(function () {});
+        Promise.resolve(client.rpc('award_tap_points', { p_token: existingToken, p_card_id: id })).then(function (res) {
+          if (!res.error && typeof res.data === 'number') {
+            showPointsState(res.data);
+          }
+        }).catch(function () {});
       } else {
         Promise.resolve(client.rpc('create_customer')).then(function (res) {
           if (res.error || !res.data || !res.data[0]) return;
           const token = res.data[0].token;
+          const code = res.data[0].recovery_code;
           localStorage.setItem('publik_customer_token', token);
-          return client.rpc('award_tap_points', { p_token: token, p_card_id: id });
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(code).catch(function () {});
+          }
+          return Promise.resolve(client.rpc('award_tap_points', { p_token: token, p_card_id: id })).then(function () {
+            showNewAccountState();
+          });
         }).catch(function () {});
       }
     } catch (e) {
@@ -222,6 +359,7 @@
       <h1>${data.business || 'Welcome'}</h1>
       ${data.tagline ? `<div class="tagline">${data.tagline}</div>` : `<div class="sub">Choose where you'd like to go</div>`}
       <div class="links">${linksHtml}${locationHtml}</div>
+      <div class="rewards-note" id="rewardsNote"></div>
       <div class="footline">Powered by <a href="https://publik.tech/">Publik</a></div>
     `;
 
