@@ -21,7 +21,7 @@
     color:var(--ink);
     padding:6vh 6vw 10vh;
   }
-  .wrap{ max-width:440px; margin:0 auto; }
+  .wrap{ max-width:460px; margin:0 auto; }
   .badge{
     width:44px; height:44px; background:var(--lime); border-radius:12px;
     display:flex; align-items:center; justify-content:center;
@@ -41,7 +41,7 @@
   textarea{ resize:vertical; min-height:64px; }
   input[type=text]:focus, textarea:focus{ outline:none; border-color:var(--lime); }
 
-  .photo-row{ display:flex; align-items:center; gap:14px; }
+  .photo-row{ display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
   .photo-preview{
     width:56px; height:56px; border-radius:14px; background:var(--card-bg);
     border:1px solid var(--border); overflow:hidden; flex-shrink:0;
@@ -88,6 +88,45 @@
   .view-link a{ color:var(--lime); }
 
   .center-msg{ text-align:center; padding-top:12vh; color:var(--ink-soft); }
+
+  /* tabs */
+  .tab-bar{
+    display:flex; gap:8px; margin-top:28px; background:var(--card-bg);
+    border:1px solid var(--border); border-radius:12px; padding:4px;
+  }
+  .tab-btn{
+    flex:1; padding:10px; border-radius:9px; border:none; background:none;
+    color:var(--ink-soft); font-weight:700; font-size:.88rem; cursor:pointer;
+  }
+  .tab-btn.active{ background:var(--lime); color:#111; }
+  .tab-panel{ display:none; }
+  .tab-panel.active{ display:block; }
+
+  /* posts */
+  .post-form{
+    background:var(--card-bg); border:1px solid var(--border); border-radius:12px;
+    padding:14px; margin-top:14px;
+  }
+  .publish-btn{
+    width:100%; margin-top:14px; padding:12px; border-radius:10px; border:none;
+    background:var(--ink); color:#111; font-weight:800; font-size:.9rem; cursor:pointer;
+  }
+  .publish-btn:disabled{ opacity:.5; }
+
+  .post-list{ margin-top:20px; }
+  .post-item{
+    background:var(--card-bg); border:1px solid var(--border); border-radius:12px;
+    padding:14px; margin-top:10px;
+  }
+  .post-item img{ width:100%; border-radius:9px; margin-bottom:10px; max-height:160px; object-fit:cover; }
+  .post-item .ptitle{ font-weight:800; font-size:.95rem; }
+  .post-item .pbody{ color:var(--ink-soft); font-size:.85rem; margin-top:4px; line-height:1.4; }
+  .post-item .pmeta{ display:flex; justify-content:space-between; align-items:center; margin-top:10px; }
+  .post-item .pwhen{ color:var(--ink-soft); font-size:.75rem; }
+  .post-item .pdelete{
+    background:none; border:none; color:var(--danger); font-size:.78rem; font-weight:700; cursor:pointer;
+  }
+  .empty-posts{ color:var(--ink-soft); font-size:.85rem; margin-top:16px; }
 </style>
 </head>
 <body>
@@ -127,7 +166,7 @@
 
   const client = window.supabase.createClient(window.PUBLIK_CONFIG.SUPABASE_URL, window.PUBLIK_CONFIG.SUPABASE_ANON_KEY);
 
-  function fileToDataURI(file, maxDim) {
+  function fileToDataURI(file, maxDim, quality) {
     return new Promise(function (resolve, reject) {
       const reader = new FileReader();
       reader.onload = function () {
@@ -139,7 +178,7 @@
           const canvas = document.createElement('canvas');
           canvas.width = w; canvas.height = h;
           canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-          resolve(canvas.toDataURL('image/jpeg', 0.72));
+          resolve(canvas.toDataURL('image/jpeg', quality || 0.72));
         };
         img.onerror = reject;
         img.src = reader.result;
@@ -149,8 +188,20 @@
     });
   }
 
+  function timeAgo(iso) {
+    const diffMs = Date.now() - new Date(iso).getTime();
+    const mins = Math.floor(diffMs / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return mins + 'm ago';
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return hours + 'h ago';
+    const days = Math.floor(hours / 24);
+    return days + 'd ago';
+  }
+
   function renderForm(data) {
     let links = (data.links || []).slice();
+    let posts = [];
 
     wrap.innerHTML = `
       <div class="badge">P</div>
@@ -167,21 +218,62 @@
       <label>Business name</label>
       <input type="text" id="businessInput" value="${(data.business || '').replace(/"/g, '&quot;')}" placeholder="Your business name">
 
-      <label>Short description</label>
-      <textarea id="taglineInput" placeholder="What you do, in a line or two">${data.tagline || ''}</textarea>
+      <div class="tab-bar">
+        <button type="button" class="tab-btn active" data-tab="card">NFC Card</button>
+        <button type="button" class="tab-btn" data-tab="profile">Profile</button>
+      </div>
 
-      <label>Links</label>
-      <div id="linksList"></div>
-      <button type="button" class="add-link" id="addLinkBtn">+ Add a link</button>
+      <div class="tab-panel active" id="tabCard">
+        <label>Short description</label>
+        <textarea id="taglineInput" placeholder="What you do, in a line or two">${data.tagline || ''}</textarea>
+
+        <label>Links</label>
+        <div id="linksList"></div>
+        <button type="button" class="add-link" id="addLinkBtn">+ Add a link</button>
+      </div>
+
+      <div class="tab-panel" id="tabProfile">
+        <label>About your business</label>
+        <textarea id="descriptionInput" placeholder="Tell customers who you are, what makes you different, your story...">${data.description || ''}</textarea>
+
+        <label>Post an update (offers, events, news)</label>
+        <div class="post-form">
+          <label style="margin-top:0;">Title</label>
+          <input type="text" id="postTitleInput" placeholder="e.g. Happy hour every Friday">
+          <label>Details</label>
+          <textarea id="postBodyInput" placeholder="Tell people about it"></textarea>
+          <label>Image (optional)</label>
+          <div class="photo-row">
+            <div class="photo-preview" id="postImgPreview">None</div>
+            <button type="button" class="btn-file" id="postImgBtn">Upload image</button>
+            <input type="file" id="postImgInput" accept="image/*">
+          </div>
+          <button type="button" class="publish-btn" id="publishBtn">Publish update</button>
+          <div class="status" id="postStatus"></div>
+        </div>
+
+        <div class="post-list" id="postList"></div>
+      </div>
 
       <button type="button" class="save-btn" id="saveBtn">Save changes</button>
       <div class="status" id="statusMsg"></div>
       <div class="view-link">See your live page: <a href="p.html?id=${encodeURIComponent(id)}" target="_blank">p.html?id=${id}</a></div>
+      <div class="view-link">See your profile: <a href="profile.html?id=${encodeURIComponent(id)}" target="_blank">profile.html?id=${id}</a></div>
       <div class="view-link">See your stats: <a href="stats.html?id=${encodeURIComponent(id)}&key=${encodeURIComponent(key)}" target="_blank">stats.html</a></div>
     `;
 
-    let photoData = data.photo || '';
+    // --- tabs ---
+    document.querySelectorAll('.tab-btn').forEach(function (btn) {
+      btn.onclick = function () {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById(btn.dataset.tab === 'card' ? 'tabCard' : 'tabProfile').classList.add('active');
+      };
+    });
 
+    // --- photo ---
+    let photoData = data.photo || '';
     document.getElementById('photoBtn').onclick = function () {
       document.getElementById('photoInput').click();
     };
@@ -194,6 +286,7 @@
       });
     };
 
+    // --- links ---
     const linksList = document.getElementById('linksList');
 
     function renderLinks() {
@@ -267,6 +360,108 @@
       renderLinks();
     };
 
+    // --- posts ---
+    let postImageData = '';
+    document.getElementById('postImgBtn').onclick = function () {
+      document.getElementById('postImgInput').click();
+    };
+    document.getElementById('postImgInput').onchange = function (e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      fileToDataURI(file, 640, 0.75).then(function (uri) {
+        postImageData = uri;
+        document.getElementById('postImgPreview').innerHTML = `<img src="${uri}">`;
+      });
+    };
+
+    function renderPosts() {
+      const postList = document.getElementById('postList');
+      if (posts.length === 0) {
+        postList.innerHTML = '<div class="empty-posts">No updates posted yet — offers or news you post here also show up on the Publik News feed on our website.</div>';
+        return;
+      }
+      postList.innerHTML = posts.map(function (p) {
+        return `
+          <div class="post-item">
+            ${p.image ? `<img src="${p.image}">` : ''}
+            <div class="ptitle">${p.title}</div>
+            ${p.body ? `<div class="pbody">${p.body}</div>` : ''}
+            <div class="pmeta">
+              <div class="pwhen">${timeAgo(p.created_at)}</div>
+              <button type="button" class="pdelete" data-delid="${p.id}">Delete</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      postList.querySelectorAll('[data-delid]').forEach(function (btn) {
+        btn.onclick = function () {
+          const postId = btn.dataset.delid;
+          btn.disabled = true;
+          btn.textContent = 'Deleting…';
+          client.rpc('delete_post', { p_id: id, p_key: key, p_post_id: Number(postId) }).then(function (res) {
+            if (!res.error && res.data) {
+              posts = posts.filter(function (p) { return String(p.id) !== String(postId); });
+              renderPosts();
+            } else {
+              btn.disabled = false;
+              btn.textContent = 'Delete';
+            }
+          });
+        };
+      });
+    }
+
+    function loadPosts() {
+      client.from('posts_public').select('*').eq('card_id', id).order('created_at', { ascending: false })
+        .then(function (res) {
+          posts = (res.data || []);
+          renderPosts();
+        });
+    }
+    loadPosts();
+
+    document.getElementById('publishBtn').onclick = function () {
+      const titleEl = document.getElementById('postTitleInput');
+      const bodyEl = document.getElementById('postBodyInput');
+      const postStatus = document.getElementById('postStatus');
+      const publishBtn = document.getElementById('publishBtn');
+      const title = titleEl.value.trim();
+      const body = bodyEl.value.trim();
+
+      if (!title) {
+        postStatus.textContent = 'Give your update a title.';
+        postStatus.className = 'status err';
+        return;
+      }
+
+      publishBtn.disabled = true;
+      postStatus.textContent = 'Publishing…';
+      postStatus.className = 'status';
+
+      client.rpc('create_post', { p_id: id, p_key: key, p_title: title, p_body: body, p_image: postImageData })
+        .then(function (res) {
+          publishBtn.disabled = false;
+          if (res.error || res.data === null) {
+            postStatus.textContent = 'Could not publish — try again.';
+            postStatus.className = 'status err';
+            return;
+          }
+          postStatus.textContent = 'Posted — now live on Publik News.';
+          postStatus.className = 'status ok';
+          titleEl.value = '';
+          bodyEl.value = '';
+          postImageData = '';
+          document.getElementById('postImgPreview').innerHTML = 'None';
+          loadPosts();
+        }).catch(function () {
+          publishBtn.disabled = false;
+          postStatus.textContent = 'Something went wrong. Try again.';
+          postStatus.className = 'status err';
+        });
+    };
+
+    // --- save (business, photo, tagline, links, description together) ---
     document.getElementById('saveBtn').onclick = function () {
       const saveBtn = document.getElementById('saveBtn');
       const statusMsg = document.getElementById('statusMsg');
@@ -276,11 +471,12 @@
 
       const business = document.getElementById('businessInput').value.trim();
       const tagline = document.getElementById('taglineInput').value.trim();
+      const description = document.getElementById('descriptionInput').value.trim();
       const cleanLinks = links.filter(function (l) { return l.label && l.url; });
 
       client.rpc('upsert_card', {
         p_id: id, p_key: key, p_business: business, p_tagline: tagline,
-        p_photo: photoData, p_links: cleanLinks
+        p_photo: photoData, p_links: cleanLinks, p_description: description
       }).then(function (res) {
         saveBtn.disabled = false;
         if (res.error || res.data === false) {
@@ -307,7 +503,7 @@
     if (!existsRes.data) {
       // Brand new id — nothing to load yet, show a blank form.
       // Saving will create the card and lock it to this key.
-      renderForm({ business: '', tagline: '', photo: '', links: [] });
+      renderForm({ business: '', tagline: '', photo: '', links: [], description: '' });
       return;
     }
 

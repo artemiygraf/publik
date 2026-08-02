@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Publik News</title>
+<style>
+  :root{
+    --bg:#1B1B26;
+    --ink:#F5F5F2;
+    --ink-soft:#9C9AA8;
+    --lime:#D6FF3F;
+    --border:rgba(255,255,255,.14);
+    --card-bg:#111116;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    background:var(--bg);
+    color:var(--ink);
+    padding:6vh 6vw 10vh;
+  }
+  .wrap{ max-width:640px; margin:0 auto; }
+  .back-link{ display:inline-block; color:var(--ink-soft); font-size:.85rem; text-decoration:none; margin-bottom:24px; }
+  .back-link:hover{ color:var(--lime); }
+
+  h1{ font-size:2rem; font-weight:800; margin-bottom:8px; }
+  .hint{ color:var(--ink-soft); font-size:.95rem; margin-bottom:36px; line-height:1.5; max-width:44ch; }
+
+  .post{
+    background:var(--card-bg); border:1px solid var(--border); border-radius:16px;
+    padding:20px; margin-bottom:18px;
+  }
+  .post-by{ display:flex; align-items:center; gap:10px; margin-bottom:14px; text-decoration:none; }
+  .post-by .avatar{
+    width:34px; height:34px; border-radius:10px; background:#1B1B26; border:1px solid var(--border);
+    overflow:hidden; flex-shrink:0; display:flex; align-items:center; justify-content:center;
+    font-weight:800; color:var(--lime); font-size:.9rem;
+  }
+  .post-by .avatar img{ width:100%; height:100%; object-fit:cover; }
+  .post-by .bname{ font-weight:700; font-size:.9rem; color:var(--ink); }
+  .post-by .bname:hover{ color:var(--lime); }
+
+  .post img.postimg{ width:100%; border-radius:12px; margin-bottom:14px; max-height:320px; object-fit:cover; }
+  .post .ptitle{ font-weight:800; font-size:1.1rem; margin-bottom:6px; }
+  .post .pbody{ color:var(--ink-soft); font-size:.93rem; line-height:1.6; white-space:pre-wrap; }
+  .post .pwhen{ color:var(--ink-soft); font-size:.75rem; margin-top:12px; }
+
+  .empty{
+    color:var(--ink-soft); font-size:.95rem; border:1px dashed var(--border);
+    border-radius:14px; padding:2rem; text-align:center;
+  }
+  .center-msg{ text-align:center; padding-top:12vh; color:var(--ink-soft); }
+</style>
+</head>
+<body>
+
+<div class="wrap" id="wrap">
+  <a class="back-link" href="index.html">&larr; Back to Publik</a>
+  <h1>Publik News</h1>
+  <div class="hint">Offers, events, and updates from every business on the Publik network — shown in random order, no favorites.</div>
+  <div id="feed"><div class="center-msg" id="state">Loading&hellip;</div></div>
+</div>
+
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+(function () {
+  const feed = document.getElementById('feed');
+
+  function showMessage(text) {
+    feed.innerHTML = `<div class="center-msg">${text}</div>`;
+  }
+
+  function supabaseConfigured() {
+    const c = window.PUBLIK_CONFIG || {};
+    return c.SUPABASE_URL && c.SUPABASE_ANON_KEY &&
+      !c.SUPABASE_URL.includes('PASTE_') && !c.SUPABASE_ANON_KEY.includes('PASTE_');
+  }
+
+  if (!supabaseConfigured() || !window.supabase) {
+    showMessage("Publik News isn't connected yet.");
+    return;
+  }
+
+  const client = window.supabase.createClient(window.PUBLIK_CONFIG.SUPABASE_URL, window.PUBLIK_CONFIG.SUPABASE_ANON_KEY);
+
+  function timeAgo(iso) {
+    const diffMs = Date.now() - new Date(iso).getTime();
+    const mins = Math.floor(diffMs / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return mins + 'm ago';
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return hours + 'h ago';
+    const days = Math.floor(hours / 24);
+    return days + 'd ago';
+  }
+
+  client.from('news_feed_public').select('*').then(function (res) {
+    if (res.error) {
+      showMessage("Couldn't load Publik News right now.");
+      return;
+    }
+    const items = res.data || [];
+    if (items.length === 0) {
+      feed.innerHTML = '<div class="empty">No news yet — updates posted by businesses on the Publik network will show up here.</div>';
+      return;
+    }
+
+    feed.innerHTML = items.map(function (p) {
+      const avatarHtml = p.card_photo
+        ? `<img src="${p.card_photo}">`
+        : (p.business ? p.business.charAt(0).toUpperCase() : 'P');
+      return `
+        <div class="post">
+          <a class="post-by" href="profile.html?id=${encodeURIComponent(p.card_id)}">
+            <div class="avatar">${avatarHtml}</div>
+            <div class="bname">${p.business || 'Publik business'}</div>
+          </a>
+          ${p.image ? `<img class="postimg" src="${p.image}">` : ''}
+          <div class="ptitle">${p.title}</div>
+          ${p.body ? `<div class="pbody">${p.body}</div>` : ''}
+          <div class="pwhen">${timeAgo(p.created_at)}</div>
+        </div>
+      `;
+    }).join('');
+  }).catch(function () {
+    showMessage("Couldn't reach the server. Check your connection and reload.");
+  });
+})();
+</script>
+
+</body>
+</html>

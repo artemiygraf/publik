@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Publik — Business Profile</title>
+<style>
+  :root{
+    --bg:#1B1B26;
+    --ink:#F5F5F2;
+    --ink-soft:#9C9AA8;
+    --lime:#D6FF3F;
+    --border:rgba(255,255,255,.14);
+    --card-bg:#111116;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    background:var(--bg);
+    color:var(--ink);
+    padding:6vh 6vw 10vh;
+  }
+  .wrap{ max-width:520px; margin:0 auto; }
+  .back-link{ display:inline-block; color:var(--ink-soft); font-size:.85rem; text-decoration:none; margin-bottom:24px; }
+  .back-link:hover{ color:var(--lime); }
+
+  .photo{
+    width:96px; height:96px; border-radius:22px; background:var(--card-bg);
+    border:1px solid var(--border); overflow:hidden; margin-bottom:20px;
+    display:flex; align-items:center; justify-content:center; font-weight:800; font-size:2rem; color:var(--lime);
+  }
+  .photo img{ width:100%; height:100%; object-fit:cover; }
+
+  h1{ font-size:1.7rem; font-weight:800; margin-bottom:8px; }
+  .tagline{ color:var(--ink-soft); font-size:1rem; margin-bottom:20px; line-height:1.5; }
+  .description{ font-size:.98rem; line-height:1.7; color:var(--ink); margin-bottom:12px; white-space:pre-wrap; }
+
+  .divider{ height:1px; background:var(--border); margin:36px 0 28px; }
+
+  .section-title{
+    font-size:.8rem; text-transform:uppercase; letter-spacing:.05em;
+    color:var(--ink-soft); font-weight:700; margin-bottom:18px;
+  }
+
+  .post{
+    background:var(--card-bg); border:1px solid var(--border); border-radius:16px;
+    padding:20px; margin-bottom:16px;
+  }
+  .post img{ width:100%; border-radius:12px; margin-bottom:14px; max-height:280px; object-fit:cover; }
+  .post .ptitle{ font-weight:800; font-size:1.05rem; margin-bottom:6px; }
+  .post .pbody{ color:var(--ink-soft); font-size:.92rem; line-height:1.6; white-space:pre-wrap; }
+  .post .pwhen{ color:var(--ink-soft); font-size:.75rem; margin-top:12px; }
+
+  .empty{
+    color:var(--ink-soft); font-size:.9rem; border:1px dashed var(--border);
+    border-radius:12px; padding:1.4rem 1.6rem;
+  }
+  .center-msg{ text-align:center; padding-top:12vh; color:var(--ink-soft); }
+  .footline{ margin-top:40px; font-size:.75rem; color:#5A5850; text-align:center; }
+  .footline a{ color:#5A5850; }
+</style>
+</head>
+<body>
+
+<div class="wrap" id="wrap">
+  <div class="center-msg" id="state">Loading&hellip;</div>
+</div>
+
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+(function () {
+  const params = new URLSearchParams(window.location.search);
+  const id = params.get('id');
+  const wrap = document.getElementById('wrap');
+
+  function showMessage(text) {
+    wrap.innerHTML = `<div class="center-msg">${text}</div>`;
+  }
+
+  function supabaseConfigured() {
+    const c = window.PUBLIK_CONFIG || {};
+    return c.SUPABASE_URL && c.SUPABASE_ANON_KEY &&
+      !c.SUPABASE_URL.includes('PASTE_') && !c.SUPABASE_ANON_KEY.includes('PASTE_');
+  }
+
+  if (!id) {
+    showMessage("No business specified.");
+    return;
+  }
+  if (!supabaseConfigured() || !window.supabase) {
+    showMessage("Profiles aren't connected yet.");
+    return;
+  }
+
+  const client = window.supabase.createClient(window.PUBLIK_CONFIG.SUPABASE_URL, window.PUBLIK_CONFIG.SUPABASE_ANON_KEY);
+
+  function timeAgo(iso) {
+    const diffMs = Date.now() - new Date(iso).getTime();
+    const mins = Math.floor(diffMs / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return mins + 'm ago';
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return hours + 'h ago';
+    const days = Math.floor(hours / 24);
+    return days + 'd ago';
+  }
+
+  function render(card, posts) {
+    const photoHtml = card.photo
+      ? `<img src="${card.photo}">`
+      : (card.business ? card.business.charAt(0).toUpperCase() : 'P');
+
+    const postsHtml = posts.length
+      ? posts.map(function (p) {
+          return `
+            <div class="post">
+              ${p.image ? `<img src="${p.image}">` : ''}
+              <div class="ptitle">${p.title}</div>
+              ${p.body ? `<div class="pbody">${p.body}</div>` : ''}
+              <div class="pwhen">${timeAgo(p.created_at)}</div>
+            </div>
+          `;
+        }).join('')
+      : '<div class="empty">No updates posted yet — check back soon.</div>';
+
+    wrap.innerHTML = `
+      <a class="back-link" href="p.html?id=${encodeURIComponent(id)}">&larr; Back to tap page</a>
+      <div class="photo">${photoHtml}</div>
+      <h1>${card.business || 'Publik business'}</h1>
+      ${card.tagline ? `<div class="tagline">${card.tagline}</div>` : ''}
+      ${card.description ? `<div class="description">${card.description}</div>` : ''}
+
+      <div class="divider"></div>
+      <div class="section-title">Updates &amp; offers</div>
+      ${postsHtml}
+
+      <div class="footline">Part of <a href="https://publik.tech/">Publik</a></div>
+    `;
+  }
+
+  Promise.all([
+    client.from('cards_public').select('*').eq('id', id).single(),
+    client.from('posts_public').select('*').eq('card_id', id).order('created_at', { ascending: false })
+  ]).then(function (results) {
+    const cardRes = results[0];
+    const postsRes = results[1];
+    if (cardRes.error || !cardRes.data) {
+      showMessage("This business profile doesn't exist yet.");
+      return;
+    }
+    render(cardRes.data, postsRes.data || []);
+  }).catch(function () {
+    showMessage("Couldn't reach the server. Check your connection and reload.");
+  });
+})();
+</script>
+
+</body>
+</html>
