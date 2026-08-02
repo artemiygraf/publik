@@ -152,16 +152,20 @@
 
   function awardTapPoints() {
     if (!client) return;
-    const existingToken = localStorage.getItem('publik_customer_token');
-    if (existingToken) {
-      client.rpc('award_tap_points', { p_token: existingToken, p_card_id: id }).catch(function () {});
-    } else {
-      client.rpc('create_customer').then(function (res) {
-        if (res.error || !res.data || !res.data[0]) return;
-        const token = res.data[0].token;
-        localStorage.setItem('publik_customer_token', token);
-        return client.rpc('award_tap_points', { p_token: token, p_card_id: id });
-      }).catch(function () {});
+    try {
+      const existingToken = localStorage.getItem('publik_customer_token');
+      if (existingToken) {
+        Promise.resolve(client.rpc('award_tap_points', { p_token: existingToken, p_card_id: id })).catch(function () {});
+      } else {
+        Promise.resolve(client.rpc('create_customer')).then(function (res) {
+          if (res.error || !res.data || !res.data[0]) return;
+          const token = res.data[0].token;
+          localStorage.setItem('publik_customer_token', token);
+          return client.rpc('award_tap_points', { p_token: token, p_card_id: id });
+        }).catch(function () {});
+      }
+    } catch (e) {
+      console.error('Publik: awardTapPoints failed', e);
     }
   }
 
