@@ -266,6 +266,8 @@
             <button type="button" class="btn-file" id="postImgBtn">Upload image</button>
             <input type="file" id="postImgInput" accept="image/*">
           </div>
+          <label>Link (optional — where should the button take people?)</label>
+          <input type="text" id="postLinkInput" placeholder="https://... e.g. a map, menu, or offer page">
           <button type="button" class="publish-btn" id="publishBtn">Publish update</button>
           <div class="status" id="postStatus"></div>
         </div>
@@ -456,10 +458,12 @@
     document.getElementById('publishBtn').onclick = function () {
       const titleEl = document.getElementById('postTitleInput');
       const bodyEl = document.getElementById('postBodyInput');
+      const linkEl = document.getElementById('postLinkInput');
       const postStatus = document.getElementById('postStatus');
       const publishBtn = document.getElementById('publishBtn');
       const title = titleEl.value.trim();
       const body = bodyEl.value.trim();
+      const link = linkEl.value.trim();
 
       if (!title) {
         postStatus.textContent = 'Give your update a title.';
@@ -471,7 +475,7 @@
       postStatus.textContent = 'Publishing…';
       postStatus.className = 'status';
 
-      client.rpc('create_post', { p_id: id, p_key: key, p_title: title, p_body: body, p_image: postImageData })
+      client.rpc('create_post', { p_id: id, p_key: key, p_title: title, p_body: body, p_image: postImageData, p_link: link })
         .then(function (res) {
           publishBtn.disabled = false;
           if (res.error || res.data === null) {
@@ -483,6 +487,7 @@
           postStatus.className = 'status ok';
           titleEl.value = '';
           bodyEl.value = '';
+          linkEl.value = '';
           postImageData = '';
           document.getElementById('postImgPreview').innerHTML = 'None';
           loadPosts();
