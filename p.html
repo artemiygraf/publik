@@ -159,9 +159,11 @@
     padding:8px 10px;
     border-radius:8px;
     font-size:.85rem;
-    text-transform:uppercase;
-    letter-spacing:.04em;
     font-family:inherit;
+  }
+  .rewards-note .restore-row button.primary:disabled{
+    opacity:.4;
+    cursor:not-allowed;
   }
   .rewards-note .restore-row{
     margin-top:10px;
@@ -217,7 +219,7 @@
       <div style="margin-top:8px;">Save your points for next time? Enter your email:</div>
       <div class="restore-row">
         <input type="text" id="emailInput" placeholder="name@email.com" maxlength="120">
-        <button type="button" class="primary" id="emailSubmitBtn">Save</button>
+        <button type="button" class="primary" id="emailSubmitBtn" disabled>Save</button>
       </div>
       <label style="display:flex;align-items:flex-start;gap:6px;margin-top:8px;font-size:.72rem;color:#5A5850;text-align:left;">
         <input type="checkbox" id="emailConsentCheck" style="margin-top:2px;flex-shrink:0;">
@@ -226,18 +228,23 @@
       <div class="status" id="emailStatus" style="margin-top:6px;font-size:.72rem;color:#D85A30;"></div>
     `;
     const btn = document.getElementById('emailSubmitBtn');
+    const consentCheck = document.getElementById('emailConsentCheck');
+    if (consentCheck && btn) {
+      consentCheck.addEventListener('change', function () {
+        btn.disabled = !consentCheck.checked;
+      });
+    }
     if (btn) {
       btn.addEventListener('click', function () {
         const input = document.getElementById('emailInput');
-        const consentCheck = document.getElementById('emailConsentCheck');
         const status = document.getElementById('emailStatus');
         const email = (input && input.value ? input.value : '').trim();
-        if (!email || email.indexOf('@') === -1) {
-          if (status) status.textContent = 'Enter a valid email first.';
-          return;
-        }
         if (!consentCheck || !consentCheck.checked) {
           if (status) status.textContent = 'Please check the box to agree first.';
+          return;
+        }
+        if (!email || email.indexOf('@') === -1) {
+          if (status) status.textContent = 'Enter a valid email first.';
           return;
         }
         if (status) status.textContent = '';
