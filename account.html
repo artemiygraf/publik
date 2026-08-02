@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Your Profile — Publik</title>
+<style>
+  :root{
+    --bg:#1B1B26;
+    --ink:#F5F5F2;
+    --ink-soft:#9C9AA8;
+    --lime:#D6FF3F;
+    --border:rgba(255,255,255,.14);
+    --card-bg:#111116;
+    --danger:#FF6B6B;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    background:var(--bg);
+    color:var(--ink);
+    padding:6vh 6vw 10vh;
+  }
+  .wrap{ max-width:440px; margin:0 auto; }
+  .back-link{ display:inline-block; color:var(--ink-soft); font-size:.85rem; text-decoration:none; margin-bottom:24px; }
+  .back-link:hover{ color:var(--lime); }
+
+  h1{ font-size:1.8rem; font-weight:800; margin-bottom:8px; }
+  .hint{ color:var(--ink-soft); font-size:.95rem; margin-bottom:30px; line-height:1.5; }
+
+  .balance-card{
+    background:var(--card-bg); border:1px solid var(--border); border-radius:18px;
+    padding:28px; text-align:center; margin-bottom:24px;
+  }
+  .balance-card .points{ font-size:3rem; font-weight:800; color:var(--lime); line-height:1; }
+  .balance-card .label{ color:var(--ink-soft); font-size:.85rem; margin-top:6px; }
+
+  .code-box{
+    background:var(--card-bg); border:1px solid var(--border); border-radius:14px;
+    padding:18px 20px; margin-bottom:24px;
+  }
+  .code-box .code-label{
+    font-size:.75rem; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-soft);
+    font-weight:700; margin-bottom:8px;
+  }
+  .code-box .code-value{
+    font-size:1.3rem; font-weight:800; letter-spacing:.08em; color:var(--ink);
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  }
+  .code-box .code-hint{ color:var(--ink-soft); font-size:.82rem; margin-top:8px; line-height:1.5; }
+
+  label{
+    display:block; font-size:.78rem; font-weight:700; letter-spacing:.03em;
+    text-transform:uppercase; color:var(--ink-soft); margin-bottom:6px; margin-top:20px;
+  }
+  input[type=text]{
+    width:100%; background:var(--card-bg); border:1px solid var(--border);
+    color:var(--ink); padding:12px 14px; border-radius:10px; font-size:1rem;
+    font-family:inherit; text-transform:uppercase; letter-spacing:.05em;
+  }
+  input[type=text]:focus{ outline:none; border-color:var(--lime); }
+
+  .primary-btn{
+    width:100%; margin-top:16px; padding:14px; border-radius:12px; border:none;
+    background:var(--lime); color:#111; font-weight:800; font-size:.95rem; cursor:pointer;
+  }
+  .primary-btn:active{ transform:scale(.98); }
+  .primary-btn:disabled{ opacity:.5; }
+
+  .link-btn{
+    display:block; text-align:center; margin-top:16px; font-size:.85rem; color:var(--ink-soft);
+    background:none; border:none; cursor:pointer; text-decoration:underline;
+    font-family:inherit;
+  }
+  .link-btn:hover{ color:var(--lime); }
+
+  .status{ margin-top:14px; font-size:.85rem; text-align:center; min-height:1.2em; }
+  .status.ok{ color:var(--lime); }
+  .status.err{ color:var(--danger); }
+
+  .empty-state{
+    color:var(--ink-soft); font-size:.92rem; line-height:1.6; border:1px dashed var(--border);
+    border-radius:14px; padding:1.6rem; text-align:center;
+  }
+
+  .center-msg{ text-align:center; padding-top:12vh; color:var(--ink-soft); }
+  #restoreSection{ display:none; }
+</style>
+</head>
+<body>
+
+<div class="wrap" id="wrap">
+  <a class="back-link" href="index.html">&larr; Back to Publik</a>
+  <h1>Your Profile</h1>
+  <div class="hint">Every tap on a Publik card earns you a point, no sign-up, no personal info, just save your code below so it isn't lost.</div>
+  <div id="content"><div class="center-msg" id="state">Loading&hellip;</div></div>
+</div>
+
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+(function () {
+  const content = document.getElementById('content');
+  const TOKEN_KEY = 'publik_customer_token';
+
+  function showMessage(text) {
+    content.innerHTML = `<div class="center-msg">${text}</div>`;
+  }
+
+  function supabaseConfigured() {
+    const c = window.PUBLIK_CONFIG || {};
+    return c.SUPABASE_URL && c.SUPABASE_ANON_KEY &&
+      !c.SUPABASE_URL.includes('PASTE_') && !c.SUPABASE_ANON_KEY.includes('PASTE_');
+  }
+
+  if (!supabaseConfigured() || !window.supabase) {
+    showMessage("Your Profile isn't connected yet.");
+    return;
+  }
+
+  const client = window.supabase.createClient(window.PUBLIK_CONFIG.SUPABASE_URL, window.PUBLIK_CONFIG.SUPABASE_ANON_KEY);
+
+  function renderBalance(points, recoveryCode) {
+    content.innerHTML = `
+      <div class="balance-card">
+        <div class="points">${points}</div>
+        <div class="label">${points === 1 ? 'point earned' : 'points earned'}</div>
+      </div>
+
+      <div class="code-box">
+        <div class="code-label">Your recovery code</div>
+        <div class="code-value">${recoveryCode}</div>
+        <div class="code-hint">Save this somewhere safe — it's the only way to see this same balance on a different phone or after clearing your browser.</div>
+      </div>
+
+      <button type="button" class="link-btn" id="switchBtn">Have a code from another device? Switch account</button>
+      <div id="restoreSection">
+        <label>Enter your recovery code</label>
+        <input type="text" id="codeInput" placeholder="e.g. 3F9A2B7C" maxlength="12">
+        <button type="button" class="primary-btn" id="restoreBtn">View my rewards</button>
+        <div class="status" id="restoreStatus"></div>
+      </div>
+    `;
+    wireRestore();
+  }
+
+  function renderEmpty() {
+    content.innerHTML = `
+      <div class="empty-state">You haven't earned any rewards yet — tap a Publik card to get started, your account is created automatically.</div>
+
+      <label>Already have a recovery code?</label>
+      <input type="text" id="codeInput" placeholder="e.g. 3F9A2B7C" maxlength="12">
+      <button type="button" class="primary-btn" id="restoreBtn">View my rewards</button>
+      <div class="status" id="restoreStatus"></div>
+    `;
+    wireRestore();
+  }
+
+  function wireRestore() {
+    const switchBtn = document.getElementById('switchBtn');
+    const restoreSection = document.getElementById('restoreSection');
+    if (switchBtn && restoreSection) {
+      switchBtn.onclick = function () {
+        restoreSection.style.display = restoreSection.style.display === 'block' ? 'none' : 'block';
+      };
+    }
+
+    const restoreBtn = document.getElementById('restoreBtn');
+    const codeInput = document.getElementById('codeInput');
+    const restoreStatus = document.getElementById('restoreStatus');
+    if (!restoreBtn) return;
+
+    restoreBtn.onclick = function () {
+      const code = codeInput.value.trim();
+      if (!code) {
+        restoreStatus.textContent = 'Enter a recovery code first.';
+        restoreStatus.className = 'status err';
+        return;
+      }
+      restoreBtn.disabled = true;
+      restoreStatus.textContent = 'Looking it up…';
+      restoreStatus.className = 'status';
+
+      client.rpc('restore_customer_by_code', { p_recovery_code: code }).then(function (res) {
+        restoreBtn.disabled = false;
+        if (res.error || !res.data || !res.data[0]) {
+          restoreStatus.textContent = "That code doesn't match any account.";
+          restoreStatus.className = 'status err';
+          return;
+        }
+        const row = res.data[0];
+        localStorage.setItem(TOKEN_KEY, row.token);
+        renderBalance(row.points, row.recovery_code);
+      }).catch(function () {
+        restoreBtn.disabled = false;
+        restoreStatus.textContent = 'Something went wrong. Try again.';
+        restoreStatus.className = 'status err';
+      });
+    };
+  }
+
+  const token = localStorage.getItem(TOKEN_KEY);
+
+  if (!token) {
+    renderEmpty();
+  } else {
+    client.rpc('get_customer_balance', { p_token: token }).then(function (res) {
+      if (res.error || !res.data || !res.data[0]) {
+        renderEmpty();
+        return;
+      }
+      renderBalance(res.data[0].points, res.data[0].recovery_code);
+    }).catch(function () {
+      showMessage("Couldn't reach the server. Check your connection and reload.");
+    });
+  }
+})();
+</script>
+
+</body>
+</html>

@@ -148,6 +148,22 @@
   const params = new URLSearchParams(window.location.search);
   const id = params.get('id');
   const wrap = document.getElementById('wrap');
+  let client = null;
+
+  function awardTapPoints() {
+    if (!client) return;
+    const existingToken = localStorage.getItem('publik_customer_token');
+    if (existingToken) {
+      client.rpc('award_tap_points', { p_token: existingToken, p_card_id: id }).catch(function () {});
+    } else {
+      client.rpc('create_customer').then(function (res) {
+        if (res.error || !res.data || !res.data[0]) return;
+        const token = res.data[0].token;
+        localStorage.setItem('publik_customer_token', token);
+        return client.rpc('award_tap_points', { p_token: token, p_card_id: id });
+      }).catch(function () {});
+    }
+  }
 
   function renderError() {
     wrap.innerHTML = `
@@ -211,6 +227,7 @@
     });
 
     logEvent('__page_view__');
+    awardTapPoints();
   }
 
   function loadLocalFallback() {
@@ -235,7 +252,7 @@
   }
 
   if (supabaseConfigured() && window.supabase) {
-    const client = window.supabase.createClient(window.PUBLIK_CONFIG.SUPABASE_URL, window.PUBLIK_CONFIG.SUPABASE_ANON_KEY);
+    client = window.supabase.createClient(window.PUBLIK_CONFIG.SUPABASE_URL, window.PUBLIK_CONFIG.SUPABASE_ANON_KEY);
     client.from('cards_public').select('*').eq('id', id).single()
       .then(function (res) {
         if (res.error || !res.data) {
