@@ -136,8 +136,8 @@
 
       <button type="button" class="link-btn" id="switchBtn">Have a code from another device? Switch account</button>
       <div id="restoreSection">
-        <label>Enter your recovery code</label>
-        <input type="text" id="codeInput" placeholder="e.g. 3F9A2B7C" maxlength="12">
+        <label>Enter your recovery code or email</label>
+        <input type="text" id="codeInput" placeholder="e.g. 3F9A2B7C or name@email.com" maxlength="120">
         <button type="button" class="primary-btn" id="restoreBtn">View my rewards</button>
         <div class="status" id="restoreStatus"></div>
       </div>
@@ -149,8 +149,8 @@
     content.innerHTML = `
       <div class="empty-state">You haven't earned any rewards yet — tap a Publik card to get started, your account is created automatically.</div>
 
-      <label>Already have a recovery code?</label>
-      <input type="text" id="codeInput" placeholder="e.g. 3F9A2B7C" maxlength="12">
+      <label>Already have a recovery code or saved email?</label>
+      <input type="text" id="codeInput" placeholder="e.g. 3F9A2B7C or name@email.com" maxlength="120">
       <button type="button" class="primary-btn" id="restoreBtn">View my rewards</button>
       <div class="status" id="restoreStatus"></div>
     `;
@@ -190,9 +190,9 @@
     if (!restoreBtn) return;
 
     restoreBtn.onclick = function () {
-      const code = codeInput.value.trim();
-      if (!code) {
-        restoreStatus.textContent = 'Enter a recovery code first.';
+      const value = codeInput.value.trim();
+      if (!value) {
+        restoreStatus.textContent = 'Enter a recovery code or email first.';
         restoreStatus.className = 'status err';
         return;
       }
@@ -200,10 +200,15 @@
       restoreStatus.textContent = 'Looking it up…';
       restoreStatus.className = 'status';
 
-      client.rpc('restore_customer_by_code', { p_recovery_code: code }).then(function (res) {
+      const isEmail = value.indexOf('@') !== -1;
+      const call = isEmail
+        ? client.rpc('restore_customer_by_email', { p_email: value })
+        : client.rpc('restore_customer_by_code', { p_recovery_code: value });
+
+      call.then(function (res) {
         restoreBtn.disabled = false;
         if (res.error || !res.data || !res.data[0]) {
-          restoreStatus.textContent = "That code doesn't match any account.";
+          restoreStatus.textContent = isEmail ? "That email doesn't match any account." : "That code doesn't match any account.";
           restoreStatus.className = 'status err';
           return;
         }
