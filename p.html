@@ -288,27 +288,36 @@
     }).catch(finish);
   }
 
+  function showRewardsDebug(label, err) {
+    console.error('Publik rewards debug —', label, err);
+    const el = rewardsNoteEl();
+    if (el) {
+      el.innerHTML = `<span style="color:#D85A30;">Rewards debug: ${label} — ${err && err.message ? err.message : JSON.stringify(err)}</span>`;
+    }
+  }
+
   function awardTapPoints() {
     if (!client) return;
     try {
       const existingToken = currentToken();
       if (existingToken) {
         Promise.resolve(client.rpc('award_tap_points', { p_token: existingToken, p_card_id: id })).then(function (res) {
-          if (!res.error && res.data && res.data[0]) {
-            showTapResult(res.data[0].points, res.data[0].awarded);
-          }
-        }).catch(function () {});
+          if (res.error) { showRewardsDebug('award_tap_points (existing token) errored', res.error); return; }
+          if (!res.data || !res.data[0]) { showRewardsDebug('award_tap_points (existing token) empty result', res); return; }
+          showTapResult(res.data[0].points, res.data[0].awarded);
+        }).catch(function (e) { showRewardsDebug('award_tap_points (existing token) threw', e); });
       } else {
         Promise.resolve(client.rpc('create_customer')).then(function (res) {
-          if (res.error || !res.data || !res.data[0]) return;
+          if (res.error) { showRewardsDebug('create_customer errored', res.error); return; }
+          if (!res.data || !res.data[0]) { showRewardsDebug('create_customer empty result', res); return; }
           const token = res.data[0].token;
           localStorage.setItem('publik_customer_token', token);
           return Promise.resolve(client.rpc('award_tap_points', { p_token: token, p_card_id: id })).then(function (awardRes) {
-            if (!awardRes.error && awardRes.data && awardRes.data[0]) {
-              showTapResult(awardRes.data[0].points, awardRes.data[0].awarded);
-            }
+            if (awardRes.error) { showRewardsDebug('award_tap_points (new token) errored', awardRes.error); return; }
+            if (!awardRes.data || !awardRes.data[0]) { showRewardsDebug('award_tap_points (new token) empty result', awardRes); return; }
+            showTapResult(awardRes.data[0].points, awardRes.data[0].awarded);
           });
-        }).catch(function () {});
+        }).catch(function (e) { showRewardsDebug('create_customer threw', e); });
       }
     } catch (e) {
       console.error('Publik: awardTapPoints failed', e);
