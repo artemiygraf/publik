@@ -53,6 +53,12 @@
   }
   input[type=email]:focus{ outline:none; border-color:var(--lime); }
 
+  .consent-row{
+    display:flex; align-items:flex-start; gap:8px; margin-top:12px; font-size:.78rem;
+    color:var(--ink-soft); line-height:1.5;
+  }
+  .consent-row input{ margin-top:3px; flex-shrink:0; }
+
   .primary-btn{
     width:100%; margin-top:16px; padding:14px; border-radius:12px; border:none;
     background:var(--lime); color:#111; font-weight:800; font-size:.95rem; cursor:pointer;
@@ -105,16 +111,30 @@
       <div class="lookup-box">
         <label>Your email</label>
         <input type="email" id="emailInput" placeholder="name@email.com">
-        <button type="button" class="primary-btn" id="lookupBtn">View my rewards</button>
+        <label class="consent-row" style="text-transform:none;letter-spacing:normal;font-weight:400;">
+          <input type="checkbox" id="lookupConsent">
+          <span>I agree to share my email so Publik can look up and show my reward points.</span>
+        </label>
+        <button type="button" class="primary-btn" id="lookupBtn" disabled>View my rewards</button>
         <div class="status" id="lookupStatus"></div>
       </div>
     `;
     const btn = document.getElementById('lookupBtn');
     const input = document.getElementById('emailInput');
     const status = document.getElementById('lookupStatus');
+    const consent = document.getElementById('lookupConsent');
+
+    consent.addEventListener('change', function () {
+      btn.disabled = !consent.checked;
+    });
 
     btn.onclick = function () {
       const email = (input.value || '').trim();
+      if (!consent.checked) {
+        status.textContent = 'Please check the box to agree first.';
+        status.className = 'status err';
+        return;
+      }
       if (!email || email.indexOf('@') === -1) {
         status.textContent = 'Enter a valid email first.';
         status.className = 'status err';
