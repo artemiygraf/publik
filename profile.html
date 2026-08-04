@@ -55,6 +55,10 @@
   .post .ptitle{ font-weight:800; font-size:1.05rem; margin-bottom:6px; }
   .post .pbody{ color:var(--ink-soft); font-size:.92rem; line-height:1.6; white-space:pre-wrap; }
   .post .pwhen{ color:var(--ink-soft); font-size:.75rem; margin-top:12px; }
+  .pinned-badge{
+    display:inline-block; color:var(--lime); font-size:.72rem; font-weight:800;
+    letter-spacing:.03em; text-transform:uppercase; margin-bottom:4px;
+  }
   .post-link-btn{
     display:inline-block; margin-top:14px; padding:9px 16px; border-radius:9px;
     background:var(--lime); color:#111; text-decoration:none; font-weight:800; font-size:.85rem;
@@ -155,6 +159,7 @@
       ? posts.map(function (p) {
           return `
             <div class="post">
+              ${p.pinned ? `<div class="pinned-badge">&#128204; Pinned</div>` : ''}
               ${p.image ? `<img src="${p.image}">` : ''}
               <div class="ptitle">${p.title}</div>
               ${p.body ? `<div class="pbody clamp-text">${p.body}</div>` : ''}
@@ -185,7 +190,7 @@
 
   Promise.all([
     client.from('cards_public').select('*').eq('id', id).single(),
-    client.from('posts_public').select('*').eq('card_id', id).order('created_at', { ascending: false })
+    client.from('posts_public').select('*').eq('card_id', id).order('pinned', { ascending: false }).order('created_at', { ascending: false })
   ]).then(function (results) {
     const cardRes = results[0];
     const postsRes = results[1];

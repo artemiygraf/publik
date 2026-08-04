@@ -140,7 +140,15 @@
   .post-item .pedit{
     background:none; border:none; color:var(--lime); font-size:.78rem; font-weight:700; cursor:pointer; margin-right:14px;
   }
+  .post-item .ppin{
+    background:none; border:none; color:var(--ink-soft); font-size:.78rem; font-weight:700; cursor:pointer; margin-right:14px;
+  }
+  .post-item .ppin.is-pinned{ color:var(--lime); }
   .post-item .pactions{ display:flex; align-items:center; }
+  .pinned-badge{
+    display:inline-block; color:var(--lime); font-size:.72rem; font-weight:800;
+    letter-spacing:.03em; text-transform:uppercase; margin-bottom:4px;
+  }
   .cancel-edit-btn{
     background:none; border:none; color:var(--ink-soft); font-size:.8rem; font-weight:700;
     cursor:pointer; margin-top:10px; text-decoration:underline;
@@ -178,6 +186,8 @@
   const id = params.get('id');
   const key = params.get('key');
   const wrap = document.getElementById('wrap');
+  const PUBLIK_OWN_CARD_ID = 'xdpk1n9j';
+  const isPublikAccount = id === PUBLIK_OWN_CARD_ID;
 
   function supabaseConfigured() {
     const c = window.PUBLIK_CONFIG || {};
@@ -514,12 +524,14 @@
       postList.innerHTML = posts.map(function (p) {
         return `
           <div class="post-item">
+            ${p.pinned ? `<div class="pinned-badge">&#128204; Pinned</div>` : ''}
             ${p.image ? `<img src="${p.image}">` : ''}
             <div class="ptitle">${p.title}</div>
             ${p.body ? `<div class="pbody clamp-text">${p.body}</div>` : ''}
             <div class="pmeta">
               <div class="pwhen">${timeAgo(p.created_at)}</div>
               <div class="pactions">
+                ${isPublikAccount ? `<button type="button" class="ppin${p.pinned ? ' is-pinned' : ''}" data-pinid="${p.id}">${p.pinned ? 'Unpin' : 'Pin'}</button>` : ''}
                 <button type="button" class="pedit" data-editid="${p.id}">Edit</button>
                 <button type="button" class="pdelete" data-delid="${p.id}">Delete</button>
               </div>
@@ -568,6 +580,26 @@
           startEdit(post);
         };
       });
+
+      if (isPublikAccount) {
+        postList.querySelectorAll('[data-pinid]').forEach(function (btn) {
+          btn.onclick = function () {
+            const postId = btn.dataset.pinid;
+            const post = posts.find(function (p) { return String(p.id) === String(postId); });
+            if (!post) return;
+            const nextPinned = !post.pinned;
+            btn.disabled = true;
+            client.rpc('pin_post', { p_id: id, p_key: key, p_post_id: Number(postId), p_pinned: nextPinned }).then(function (res) {
+              btn.disabled = false;
+              if (!res.error && res.data) {
+                loadPosts();
+              }
+            }).catch(function () {
+              btn.disabled = false;
+            });
+          };
+        });
+      }
     }
 
     function startEdit(post) {
@@ -608,7 +640,8 @@
     }
 
     function loadPosts() {
-      client.from('posts_public').select('*').eq('card_id', id).order('created_at', { ascending: false })
+      client.from('posts_public').select('*').eq('card_id', id)
+        .order('pinned', { ascending: false }).order('created_at', { ascending: false })
         .then(function (res) {
           posts = (res.data || []);
           renderPosts();

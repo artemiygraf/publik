@@ -49,6 +49,10 @@
     display:inline-block; margin-top:14px; padding:9px 16px; border-radius:9px;
     background:var(--lime); color:#111; text-decoration:none; font-weight:800; font-size:.85rem;
   }
+  .pinned-badge{
+    display:inline-block; color:var(--lime); font-size:.72rem; font-weight:800;
+    letter-spacing:.03em; text-transform:uppercase; margin-bottom:10px;
+  }
 
   .clamp-text{
     display:-webkit-box;
@@ -152,6 +156,7 @@
             <div class="avatar">${avatarHtml}</div>
             <div class="bname">${p.business || 'Publik business'}</div>
           </a>
+          ${p.pinned ? `<div class="pinned-badge">&#128204; Pinned</div>` : ''}
           ${p.image ? `<img class="postimg" src="${p.image}">` : ''}
           <div class="ptitle">${p.title}</div>
           ${p.body ? `<div class="pbody clamp-text">${p.body}</div>` : ''}
