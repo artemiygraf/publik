@@ -199,6 +199,7 @@
   const id = params.get('id');
   const wrap = document.getElementById('wrap');
   let client = null;
+  let pointsEnabled = false;
 
   function rewardsNoteEl() {
     return document.getElementById('rewardsNote');
@@ -283,7 +284,7 @@
 
   function awardReviewPoints(done) {
     const finish = done || function () {};
-    if (!client) { finish(); return; }
+    if (!client || !pointsEnabled) { finish(); return; }
     const token = currentToken();
     if (!token) { finish(); return; }
     Promise.resolve(client.rpc('award_review_points', { p_token: token, p_card_id: id })).then(function (res) {
@@ -304,7 +305,7 @@
   }
 
   function awardTapPoints() {
-    if (!client) return;
+    if (!client || !pointsEnabled) return;
     try {
       const existingToken = currentToken();
       if (existingToken) {
@@ -434,19 +435,23 @@
 
   if (supabaseConfigured() && window.supabase) {
     client = window.supabase.createClient(window.PUBLIK_CONFIG.SUPABASE_URL, window.PUBLIK_CONFIG.SUPABASE_ANON_KEY);
-    client.from('cards_public').select('*').eq('id', id).single()
-      .then(function (res) {
-        if (res.error || !res.data) {
-          console.error('Publik: cards_public query returned error', res.error);
-          loadLocalFallback('query error — ' + (res.error ? (res.error.message || res.error.code || JSON.stringify(res.error)) : 'no data returned'));
-        } else {
-          renderCard(res.data);
-        }
-      })
-      .catch(function (e) {
-        console.error('Publik: cards_public query threw', e);
-        loadLocalFallback('query threw — ' + (e && e.message ? e.message : String(e)));
-      });
+    Promise.resolve(client.rpc('get_points_enabled')).then(function (flagRes) {
+      pointsEnabled = !flagRes.error && flagRes.data === true;
+    }).catch(function () {}).then(function () {
+      client.from('cards_public').select('*').eq('id', id).single()
+        .then(function (res) {
+          if (res.error || !res.data) {
+            console.error('Publik: cards_public query returned error', res.error);
+            loadLocalFallback('query error — ' + (res.error ? (res.error.message || res.error.code || JSON.stringify(res.error)) : 'no data returned'));
+          } else {
+            renderCard(res.data);
+          }
+        })
+        .catch(function (e) {
+          console.error('Publik: cards_public query threw', e);
+          loadLocalFallback('query threw — ' + (e && e.message ? e.message : String(e)));
+        });
+    });
   } else {
     loadLocalFallback('supabase not configured or library missing — configured=' + supabaseConfigured() + ' lib=' + (typeof window.supabase));
   }

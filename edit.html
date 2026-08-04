@@ -180,6 +180,7 @@
   }
 
   const client = window.supabase.createClient(window.PUBLIK_CONFIG.SUPABASE_URL, window.PUBLIK_CONFIG.SUPABASE_ANON_KEY);
+  let pointsEnabled = false;
 
   function fileToDataURI(file, maxDim, quality) {
     return new Promise(function (resolve, reject) {
@@ -239,6 +240,7 @@
       <div class="tab-bar">
         <button type="button" class="tab-btn active" data-tab="card">NFC Card</button>
         <button type="button" class="tab-btn" data-tab="profile">Profile</button>
+        ${pointsEnabled ? `<button type="button" class="tab-btn" data-tab="redeem">Redeem</button>` : ''}
       </div>
 
       <div class="tab-panel active" id="tabCard">
@@ -275,6 +277,21 @@
         <div class="post-list" id="postList"></div>
       </div>
 
+      ${pointsEnabled ? `
+      <div class="tab-panel" id="tabRedeem">
+        <div class="hint" style="margin-bottom:0;">Ask the customer for the email they used to save their points, and how many points they say they have. This must match before anything is deducted.</div>
+
+        <label>Customer's email</label>
+        <input type="text" id="redeemEmailInput" placeholder="name@email.com">
+        <label>What they say their balance is</label>
+        <input type="text" id="redeemClaimedInput" placeholder="e.g. 12" inputmode="numeric">
+        <label>Points to redeem</label>
+        <input type="text" id="redeemAmountInput" placeholder="e.g. 5" inputmode="numeric">
+        <button type="button" class="publish-btn" id="redeemBtn">Redeem points</button>
+        <div class="status" id="redeemStatus"></div>
+      </div>
+      ` : ''}
+
       <button type="button" class="save-btn" id="saveBtn">Save changes</button>
       <div class="status" id="statusMsg"></div>
       <div class="view-link">See your live page: <a href="p.html?id=${encodeURIComponent(id)}" target="_blank">p.html?id=${id}</a></div>
@@ -283,14 +300,70 @@
     `;
 
     // --- tabs ---
+    const tabPanelIds = { card: 'tabCard', profile: 'tabProfile', redeem: 'tabRedeem' };
     document.querySelectorAll('.tab-btn').forEach(function (btn) {
       btn.onclick = function () {
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
         document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
         btn.classList.add('active');
-        document.getElementById(btn.dataset.tab === 'card' ? 'tabCard' : 'tabProfile').classList.add('active');
+        const panel = document.getElementById(tabPanelIds[btn.dataset.tab]);
+        if (panel) panel.classList.add('active');
       };
     });
+
+    // --- redeem points ---
+    if (pointsEnabled) {
+      const redeemBtn = document.getElementById('redeemBtn');
+      if (redeemBtn) {
+        redeemBtn.onclick = function () {
+          const emailEl = document.getElementById('redeemEmailInput');
+          const claimedEl = document.getElementById('redeemClaimedInput');
+          const amountEl = document.getElementById('redeemAmountInput');
+          const status = document.getElementById('redeemStatus');
+          const email = emailEl.value.trim();
+          const claimed = parseInt(claimedEl.value, 10);
+          const amount = parseInt(amountEl.value, 10);
+
+          if (!email || email.indexOf('@') === -1) {
+            status.textContent = "Enter the customer's email.";
+            status.className = 'status err';
+            return;
+          }
+          if (isNaN(claimed) || isNaN(amount)) {
+            status.textContent = 'Enter valid numbers for both point fields.';
+            status.className = 'status err';
+            return;
+          }
+
+          redeemBtn.disabled = true;
+          status.textContent = 'Checking…';
+          status.className = 'status';
+
+          client.rpc('redeem_points', {
+            p_id: id, p_key: key, p_email: email, p_claimed_points: claimed, p_redeem_amount: amount
+          }).then(function (res) {
+            redeemBtn.disabled = false;
+            if (res.error || !res.data || !res.data[0]) {
+              status.textContent = 'Something went wrong. Try again.';
+              status.className = 'status err';
+              return;
+            }
+            const row = res.data[0];
+            status.textContent = row.message + (row.new_balance !== null && row.new_balance !== undefined ? ' (' + row.new_balance + ' points left)' : '');
+            status.className = row.ok ? 'status ok' : 'status err';
+            if (row.ok) {
+              emailEl.value = '';
+              claimedEl.value = '';
+              amountEl.value = '';
+            }
+          }).catch(function () {
+            redeemBtn.disabled = false;
+            status.textContent = 'Something went wrong. Try again.';
+            status.className = 'status err';
+          });
+        };
+      }
+    }
 
     // --- photo ---
     let photoData = data.photo || '';
@@ -533,7 +606,14 @@
     };
   }
 
-  client.rpc('card_exists', { p_id: id }).then(function (existsRes) {
+  Promise.all([
+    client.rpc('card_exists', { p_id: id }),
+    client.rpc('get_points_enabled')
+  ]).then(function (results) {
+    const existsRes = results[0];
+    const flagRes = results[1];
+    pointsEnabled = !flagRes.error && flagRes.data === true;
+
     if (existsRes.error) {
       showMessage("Couldn't reach the server. Check your connection and reload.");
       return;

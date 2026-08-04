@@ -181,7 +181,17 @@
 
   const client = window.supabase.createClient(window.PUBLIK_CONFIG.SUPABASE_URL, window.PUBLIK_CONFIG.SUPABASE_ANON_KEY);
 
-  renderLookup();
+  showMessage('Loading…');
+  Promise.resolve(client.rpc('get_points_enabled')).then(function (res) {
+    const enabled = !res.error && res.data === true;
+    if (!enabled) {
+      showMessage("Rewards aren't available right now — check back soon.");
+      return;
+    }
+    renderLookup();
+  }).catch(function () {
+    showMessage("Couldn't reach the server. Check your connection and reload.");
+  });
 })();
 </script>
 

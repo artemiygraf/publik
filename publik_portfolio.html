@@ -445,7 +445,7 @@
 
 <div class="stars" id="stars"></div>
 
-<header>Publik <a href="news.html" class="header-news">News</a> <a href="account.html" class="header-news">Your Profile</a></header>
+<header>Publik <a href="news.html" class="header-news">News</a> <a href="account.html" class="header-news" id="headerYourProfileLink">Your Profile</a></header>
 
 <button class="menu-toggle" id="menuToggle" aria-label="Open menu">
   <span></span><span></span><span></span>
@@ -455,7 +455,7 @@
   <a href="#portfolio" class="menu-link">Portfolio</a>
   <a href="#nfc-card" class="menu-link">NFC Cards</a>
   <a href="news.html" class="menu-link">Publik News</a>
-  <a href="account.html" class="menu-link">Your Profile</a>
+  <a href="account.html" class="menu-link" id="menuYourProfileLink">Your Profile</a>
   <a href="#about" class="menu-link menu-gap">About Us</a>
   <a href="#reviews" class="menu-link">Client Reviews</a>
 </nav>
@@ -704,6 +704,28 @@
 
       document.getElementById('reviewsContent').innerHTML = `<div class="review-grid">${cardsHtml}</div>`;
     }).catch(function () {});
+  })();
+
+  // Hide "Your Profile" nav links while the rewards feature is switched off
+  // from the admin dashboard.
+  (function checkPointsEnabled() {
+    const config = window.PUBLIK_CONFIG || {};
+    const configured = config.SUPABASE_URL && config.SUPABASE_ANON_KEY &&
+      !config.SUPABASE_URL.includes('PASTE_') && !config.SUPABASE_ANON_KEY.includes('PASTE_');
+
+    function hideProfileLinks() {
+      const a = document.getElementById('headerYourProfileLink');
+      const b = document.getElementById('menuYourProfileLink');
+      if (a) a.style.display = 'none';
+      if (b) b.style.display = 'none';
+    }
+
+    if (!configured || !window.supabase) { hideProfileLinks(); return; }
+
+    const client = window.supabase.createClient(config.SUPABASE_URL, config.SUPABASE_ANON_KEY);
+    client.rpc('get_points_enabled').then(function (res) {
+      if (res.error || res.data !== true) hideProfileLinks();
+    }).catch(hideProfileLinks);
   })();
 </script>
 
