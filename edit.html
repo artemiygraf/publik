@@ -65,6 +65,17 @@
     background:none; border:none; color:var(--danger); font-size:.8rem; font-weight:700;
     cursor:pointer; margin-top:12px;
   }
+  .link-card-head{
+    display:flex; align-items:center; gap:8px; color:var(--ink-soft); font-size:.75rem;
+    font-weight:700; letter-spacing:.03em; text-transform:uppercase;
+  }
+  .drag-handle{
+    cursor:grab; font-size:1.15rem; line-height:1; color:var(--ink-soft);
+    user-select:none; touch-action:none; padding:2px 4px;
+  }
+  .drag-handle:active{ cursor:grabbing; }
+  .link-card.sortable-ghost{ opacity:.35; }
+  .link-card.sortable-drag{ box-shadow:0 6px 18px rgba(0,0,0,.4); }
 
   .add-link{
     width:100%; margin-top:14px; padding:14px; border-radius:12px;
@@ -160,6 +171,7 @@
 
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 <script>
 (function () {
   const params = new URLSearchParams(window.location.search);
@@ -396,6 +408,10 @@
         const card = document.createElement('div');
         card.className = 'link-card';
         card.innerHTML = `
+          <div class="link-card-head">
+            <span class="drag-handle" title="Drag to reorder">&#9776;</span>
+            <span>Link ${i + 1}</span>
+          </div>
           <label>Label (e.g. "Leave a review")</label>
           <input type="text" data-field="label" data-i="${i}" value="${(link.label || '').replace(/"/g, '&quot;')}">
           <label>Link URL</label>
@@ -455,6 +471,19 @@
     }
 
     renderLinks();
+
+    if (window.Sortable) {
+      Sortable.create(linksList, {
+        handle: '.drag-handle',
+        animation: 150,
+        onEnd: function (evt) {
+          if (evt.oldIndex === evt.newIndex) return;
+          const moved = links.splice(evt.oldIndex, 1)[0];
+          links.splice(evt.newIndex, 0, moved);
+          renderLinks();
+        }
+      });
+    }
 
     document.getElementById('addLinkBtn').onclick = function () {
       links.push({ label: '', url: '', icon: '' });
