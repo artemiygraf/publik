@@ -126,6 +126,14 @@
   .post-item .pdelete{
     background:none; border:none; color:var(--danger); font-size:.78rem; font-weight:700; cursor:pointer;
   }
+  .post-item .pedit{
+    background:none; border:none; color:var(--lime); font-size:.78rem; font-weight:700; cursor:pointer; margin-right:14px;
+  }
+  .post-item .pactions{ display:flex; align-items:center; }
+  .cancel-edit-btn{
+    background:none; border:none; color:var(--ink-soft); font-size:.8rem; font-weight:700;
+    cursor:pointer; margin-top:10px; text-decoration:underline;
+  }
   .empty-posts{ color:var(--ink-soft); font-size:.85rem; margin-top:16px; }
 
   .clamp-text{
@@ -455,6 +463,7 @@
 
     // --- posts ---
     let postImageData = '';
+    let editingPostId = null;
     document.getElementById('postImgBtn').onclick = function () {
       document.getElementById('postImgInput').click();
     };
@@ -481,7 +490,10 @@
             ${p.body ? `<div class="pbody clamp-text">${p.body}</div>` : ''}
             <div class="pmeta">
               <div class="pwhen">${timeAgo(p.created_at)}</div>
-              <button type="button" class="pdelete" data-delid="${p.id}">Delete</button>
+              <div class="pactions">
+                <button type="button" class="pedit" data-editid="${p.id}">Edit</button>
+                <button type="button" class="pdelete" data-delid="${p.id}">Delete</button>
+              </div>
             </div>
           </div>
         `;
@@ -509,6 +521,7 @@
           client.rpc('delete_post', { p_id: id, p_key: key, p_post_id: Number(postId) }).then(function (res) {
             if (!res.error && res.data) {
               posts = posts.filter(function (p) { return String(p.id) !== String(postId); });
+              if (String(editingPostId) === String(postId)) cancelEdit();
               renderPosts();
             } else {
               btn.disabled = false;
@@ -517,6 +530,52 @@
           });
         };
       });
+
+      postList.querySelectorAll('[data-editid]').forEach(function (btn) {
+        btn.onclick = function () {
+          const postId = btn.dataset.editid;
+          const post = posts.find(function (p) { return String(p.id) === String(postId); });
+          if (!post) return;
+          startEdit(post);
+        };
+      });
+    }
+
+    function startEdit(post) {
+      editingPostId = post.id;
+      document.getElementById('postTitleInput').value = post.title || '';
+      document.getElementById('postBodyInput').value = post.body || '';
+      document.getElementById('postLinkInput').value = post.link || '';
+      postImageData = post.image || '';
+      document.getElementById('postImgPreview').innerHTML = post.image ? `<img src="${post.image}">` : 'None';
+
+      const publishBtn = document.getElementById('publishBtn');
+      publishBtn.textContent = 'Save changes to this post';
+
+      let cancelBtn = document.getElementById('cancelEditBtn');
+      if (!cancelBtn) {
+        cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.id = 'cancelEditBtn';
+        cancelBtn.className = 'cancel-edit-btn';
+        cancelBtn.textContent = 'Cancel edit';
+        cancelBtn.onclick = cancelEdit;
+        publishBtn.insertAdjacentElement('afterend', cancelBtn);
+      }
+
+      document.querySelector('.post-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function cancelEdit() {
+      editingPostId = null;
+      document.getElementById('postTitleInput').value = '';
+      document.getElementById('postBodyInput').value = '';
+      document.getElementById('postLinkInput').value = '';
+      postImageData = '';
+      document.getElementById('postImgPreview').innerHTML = 'None';
+      document.getElementById('publishBtn').textContent = 'Publish update';
+      const cancelBtn = document.getElementById('cancelEditBtn');
+      if (cancelBtn) cancelBtn.remove();
     }
 
     function loadPosts() {
@@ -545,6 +604,33 @@
       }
 
       publishBtn.disabled = true;
+
+      if (editingPostId) {
+        postStatus.textContent = 'Saving…';
+        postStatus.className = 'status';
+
+        client.rpc('update_post', {
+          p_id: id, p_key: key, p_post_id: Number(editingPostId),
+          p_title: title, p_body: body, p_image: postImageData, p_link: link
+        }).then(function (res) {
+          publishBtn.disabled = false;
+          if (res.error || !res.data) {
+            postStatus.textContent = 'Could not save changes — try again.';
+            postStatus.className = 'status err';
+            return;
+          }
+          postStatus.textContent = 'Post updated.';
+          postStatus.className = 'status ok';
+          cancelEdit();
+          loadPosts();
+        }).catch(function () {
+          publishBtn.disabled = false;
+          postStatus.textContent = 'Something went wrong. Try again.';
+          postStatus.className = 'status err';
+        });
+        return;
+      }
+
       postStatus.textContent = 'Publishing…';
       postStatus.className = 'status';
 
